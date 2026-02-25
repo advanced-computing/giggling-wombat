@@ -3,6 +3,8 @@ import pandas as pd
 import requests
 import streamlit as st
 
+from src.wpsup import clean_wpsup, add_week_column, compute_weekly_total
+
 st.set_page_config(page_title="Weekly U.S. Petroleum Supply", layout="wide")
 st.title("Weekly U.S. Petroleum Product Supplied (Total)")
 st.caption("Source: U.S. Energy Information Administration (EIA API v2) — petroleum/cons/wpsup (weekly)")
@@ -52,20 +54,12 @@ if df.empty:
 # -----------------------------
 # Clean + aggregate
 # -----------------------------
-df["period"] = pd.to_datetime(df["period"], errors="coerce")
-df["value"] = pd.to_numeric(df["value"], errors="coerce")
-df = df.dropna(subset=["period", "value"])
-
-# Standardize week to "week ending Friday" (stable weekly key)
-df["week"] = df["period"].dt.to_period("W-FRI").dt.end_time.dt.normalize()
-
-# Total across ALL products per week
-weekly_total = (
-    df.groupby("week", as_index=False)["value"]
-      .sum()
-      .rename(columns={"value": "total_product_supplied"})
-      .sort_values("week")
-)
+# -----------------------------
+# Clean + aggregate
+# -----------------------------
+df = clean_wpsup(df)
+df = add_week_column(df)
+weekly_total = compute_weekly_total(df)
 
 # Latest week snapshot: top products by value
 latest_week = df["week"].max()
