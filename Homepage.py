@@ -30,10 +30,10 @@ with st.expander("Project Proposal", expanded=False):
 
     st.subheader("Datasets")
     st.markdown("""
-    - **Weekly U.S. Petroleum Product Supplied**  
+    - **Weekly U.S. Petroleum Product Supplied**
       https://www.eia.gov/opendata/browser/petroleum/cons/wpsup
 
-    - **Weekly WTI Crude Oil Spot Price (RWTC)**  
+    - **Weekly WTI Crude Oil Spot Price (RWTC)**
       https://www.eia.gov/opendata/browser/petroleum/pri/spt
     """)
 
@@ -44,14 +44,13 @@ with st.expander("Project Proposal", expanded=False):
     3. Do petroleum supply and crude oil prices show similar patterns over time?
     4. Are there noticeable disruptions during major events such as COVID-19 period?
     """)
-    
     st.subheader("Link to the notebook")
     st.markdown("[Project Notebook](https://github.com/advanced-computing/giggling-wombat/blob/main/project.ipynb)")
 
     st.subheader("Target Visualization")
     st.markdown("""
-    - Weekly time-series line chart of U.S. petroleum product supplied  
-    - Weekly time-series line chart of WTI crude oil price  
+    - Weekly time-series line chart of U.S. petroleum product supplied
+    - Weekly time-series line chart of WTI crude oil price
     - Visual comparison of trends between the two series
     """)
 
