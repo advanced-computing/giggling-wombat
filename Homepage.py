@@ -15,6 +15,56 @@ st.title("The Correlation between Weekly U.S. Petroleum Product Supplied and WTI
 st.subheader("Team Members: Irina, Indra")
 st.caption("Source: U.S. Energy Information Administration (EIA)")
 
+# =========================
+# Project Proposal
+# =========================
+with st.expander("Project Proposal", expanded=False):
+
+    st.subheader("Project Overview")
+    st.write("""
+    This project analyzes weekly U.S. petroleum product supplied data and
+    WTI crude oil spot price data using the EIA API. Our goal is to explore
+    how petroleum supply and crude oil prices evolve over time and whether
+    they exhibit similar patterns during major economic or energy market events.
+    """)
+
+    st.subheader("Datasets")
+    st.markdown("""
+    - **Weekly U.S. Petroleum Product Supplied**  
+      https://www.eia.gov/opendata/browser/petroleum/cons/wpsup
+
+    - **Weekly WTI Crude Oil Spot Price (RWTC)**  
+      https://www.eia.gov/opendata/browser/petroleum/pri/spt
+    """)
+
+    st.subheader("Research Questions")
+    st.markdown("""
+    1. How has U.S. petroleum product supplied changed since 2012?
+    2. How has WTI crude oil price changed over the same period?
+    3. Do petroleum supply and crude oil prices show similar patterns over time?
+    4. Are there noticeable disruptions during major events such as COVID-19 period?
+    """)
+    
+    st.subheader("Link to the notebook")
+    st.markdown("[Project Notebook](https://github.com/advanced-computing/giggling-wombat/blob/main/project.ipynb)")
+
+    st.subheader("Target Visualization")
+    st.markdown("""
+    - Weekly time-series line chart of U.S. petroleum product supplied  
+    - Weekly time-series line chart of WTI crude oil price  
+    - Visual comparison of trends between the two series
+    """)
+
+    st.subheader("Known Unknowns and Challenges")
+    st.markdown("""
+    - Petroleum product supplied is a proxy for demand rather than a direct measure
+    - Weekly data can be noisy and may obscure long-term trends
+    - Oil prices and supply may react to different economic forces
+    - The project depends on API data retrieval instead of downloadable CSV files
+    """)
+
+st.divider()
+
 API_KEY = st.secrets.get("EIA_API_KEY", None)
 if not API_KEY:
     st.error("Missing EIA API key. Set it in Streamlit Secrets as EIA_API_KEY.")
