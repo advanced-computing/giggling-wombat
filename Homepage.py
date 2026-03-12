@@ -19,7 +19,6 @@ st.caption("Source: U.S. Energy Information Administration (EIA)")
 # Project Proposal
 # =========================
 with st.expander("Project Proposal", expanded=False):
-
     st.subheader("Project Overview")
     st.write("""
     This project analyzes weekly U.S. petroleum product supplied data and
@@ -45,7 +44,9 @@ with st.expander("Project Proposal", expanded=False):
     4. Are there noticeable disruptions during major events such as COVID-19 period?
     """)
     st.subheader("Link to the notebook")
-    st.markdown("[Project Notebook](https://github.com/advanced-computing/giggling-wombat/blob/main/project.ipynb)")
+    st.markdown(
+        "[Project Notebook](https://github.com/advanced-computing/giggling-wombat/blob/main/project.ipynb)"
+    )
 
     st.subheader("Target Visualization")
     st.markdown("""
