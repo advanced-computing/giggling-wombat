@@ -1,4 +1,5 @@
 import matplotlib.pyplot as plt
+import pandas as pd
 import requests
 import streamlit as st
 
@@ -20,48 +21,59 @@ st.caption("Source: U.S. Energy Information Administration (EIA)")
 # =========================
 with st.expander("Project Proposal", expanded=False):
     st.subheader("Project Overview")
-    st.write("""
-    This project analyzes weekly U.S. petroleum product supplied data and
-    WTI crude oil spot price data using the EIA API. Our goal is to explore
-    how petroleum supply and crude oil prices evolve over time and whether
-    they exhibit similar patterns during major economic or energy market events.
-    """)
+    st.write(
+        """
+        This project analyzes weekly U.S. petroleum product supplied data and
+        WTI crude oil spot price data using the EIA API. Our goal is to explore
+        how petroleum supply and crude oil prices evolve over time and whether
+        they exhibit similar patterns during major economic or energy market events.
+        """
+    )
 
     st.subheader("Datasets")
-    st.markdown("""
-    - **Weekly U.S. Petroleum Product Supplied**
-      https://www.eia.gov/opendata/browser/petroleum/cons/wpsup
+    st.markdown(
+        """
+        - **Weekly U.S. Petroleum Product Supplied**
+          https://www.eia.gov/opendata/browser/petroleum/cons/wpsup
 
-    - **Weekly WTI Crude Oil Spot Price (RWTC)**
-      https://www.eia.gov/opendata/browser/petroleum/pri/spt
-    """)
+        - **Weekly WTI Crude Oil Spot Price (RWTC)**
+          https://www.eia.gov/opendata/browser/petroleum/pri/spt
+        """
+    )
 
     st.subheader("Research Questions")
-    st.markdown("""
-    1. How has U.S. petroleum product supplied changed since 2012?
-    2. How has WTI crude oil price changed over the same period?
-    3. Do petroleum supply and crude oil prices show similar patterns over time?
-    4. Are there noticeable disruptions during major events such as COVID-19 period?
-    """)
+    st.markdown(
+        """
+        1. How has U.S. petroleum product supplied changed since 2012?
+        2. How has WTI crude oil price changed over the same period?
+        3. Do petroleum supply and crude oil prices show similar patterns over time?
+        4. Are there noticeable disruptions during major events such as the COVID-19 period?
+        """
+    )
+
     st.subheader("Link to the notebook")
     st.markdown(
         "[Project Notebook](https://github.com/advanced-computing/giggling-wombat/blob/main/project.ipynb)"
     )
 
     st.subheader("Target Visualization")
-    st.markdown("""
-    - Weekly time-series line chart of U.S. petroleum product supplied
-    - Weekly time-series line chart of WTI crude oil price
-    - Visual comparison of trends between the two series
-    """)
+    st.markdown(
+        """
+        - Weekly time-series line chart of U.S. petroleum product supplied
+        - Weekly time-series line chart of WTI crude oil price
+        - Visual comparison of trends between the two series
+        """
+    )
 
     st.subheader("Known Unknowns and Challenges")
-    st.markdown("""
-    - Petroleum product supplied is a proxy for demand rather than a direct measure
-    - Weekly data can be noisy and may obscure long-term trends
-    - Oil prices and supply may react to different economic forces
-    - The project depends on API data retrieval instead of downloadable CSV files
-    """)
+    st.markdown(
+        """
+        - Petroleum product supplied is a proxy for demand rather than a direct measure
+        - Weekly data can be noisy and may obscure long-term trends
+        - Oil prices and supply may react to different economic forces
+        - The project depends on API data retrieval instead of downloadable CSV files
+        """
+    )
 
 st.divider()
 
@@ -108,11 +120,10 @@ if df.empty:
     st.error("EIA returned no usable data for supply (empty after parsing).")
     st.stop()
 
-# Filter (2012–present)
+# Filter to 2012–present first
 df = filter_since(df, date_col="week", start_date="2012-01-01")
 df = eia_schema.validate(df)
 
-weekly_total = sum_by_week(df, date_col="week", value_col="value")
 if df.empty:
     st.error("No data after filtering to 2012–present. Check parsing or EIA response.")
     st.stop()
@@ -120,34 +131,78 @@ if df.empty:
 # Aggregate weekly (safe even if already weekly)
 weekly_total = sum_by_week(df, date_col="week", value_col="value")
 
-# Optional: rename for readability in plots/table
+# Rename for readability
 weekly_total = weekly_total.rename(columns={"value": "total_product_supplied"})
+
+# =========================
+# Interactive Week Filter
+# =========================
+st.subheader("Filter by Week")
+
+min_week = weekly_total["week"].min().date()
+max_week = weekly_total["week"].max().date()
+
+col1, col2 = st.columns(2)
+
+with col1:
+    start_week = st.date_input(
+        "Start week",
+        value=min_week,
+        min_value=min_week,
+        max_value=max_week,
+    )
+
+with col2:
+    end_week = st.date_input(
+        "End week",
+        value=max_week,
+        min_value=min_week,
+        max_value=max_week,
+    )
+
+if start_week > end_week:
+    st.error("Start week must be earlier than or equal to end week.")
+    st.stop()
+
+filtered_total = weekly_total[
+    (weekly_total["week"] >= pd.to_datetime(start_week))
+    & (weekly_total["week"] <= pd.to_datetime(end_week))
+].copy()
+
+if filtered_total.empty:
+    st.warning("No data available for the selected date range.")
+    st.stop()
 
 # Latest value
 try:
-    latest_total = latest_value(weekly_total, date_col="week", value_col="total_product_supplied")
+    latest_total = latest_value(
+        filtered_total,
+        date_col="week",
+        value_col="total_product_supplied",
+    )
 except Exception:
     latest_total = None
 
 # Metrics
 c1, c2 = st.columns(2)
-c1.metric("Weeks in dataset (2012–present)", f"{weekly_total.shape[0]:,}")
+c1.metric("Weeks in selected range", f"{filtered_total.shape[0]:,}")
 c2.metric(
     "Latest total (sum of products)",
     f"{latest_total:,.0f}" if latest_total is not None else "—",
 )
+
 st.divider()
 st.subheader("Total Product Supplied (Weekly, All Products Summed)")
 
 fig, ax = plt.subplots()
-ax.plot(weekly_total["week"], weekly_total["total_product_supplied"])
+ax.plot(filtered_total["week"], filtered_total["total_product_supplied"])
 ax.set_xlabel("Week")
 ax.set_ylabel("Total Product Supplied (sum of EIA 'value')")
 st.pyplot(fig)
 
 with st.expander("Show data table"):
     st.dataframe(
-        weekly_total.sort_values("week", ascending=False),
+        filtered_total.sort_values("week", ascending=False),
         use_container_width=True,
     )
 
