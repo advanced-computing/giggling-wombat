@@ -1,4 +1,5 @@
 import matplotlib.pyplot as plt
+import pandas as pd
 import requests
 import streamlit as st
 
@@ -67,27 +68,75 @@ weekly_wti = sum_by_week(df, date_col="week", value_col="value").rename(
     columns={"value": "wti_price"}
 )
 
+# =========================
+# Interactive Week Filter
+# =========================
+st.subheader("Filter by Week")
+
+min_week = weekly_wti["week"].min().date()
+max_week = weekly_wti["week"].max().date()
+
+col1, col2 = st.columns(2)
+
+with col1:
+    start_week = st.date_input(
+        "Start week",
+        value=min_week,
+        min_value=min_week,
+        max_value=max_week,
+        key="wti_start_week",
+    )
+
+with col2:
+    end_week = st.date_input(
+        "End week",
+        value=max_week,
+        min_value=min_week,
+        max_value=max_week,
+        key="wti_end_week",
+    )
+
+if start_week > end_week:
+    st.error("Start week must be earlier than or equal to end week.")
+    st.stop()
+
+filtered_wti = weekly_wti[
+    (weekly_wti["week"] >= pd.to_datetime(start_week))
+    & (weekly_wti["week"] <= pd.to_datetime(end_week))
+].copy()
+
+if filtered_wti.empty:
+    st.warning("No WTI data available for the selected date range.")
+    st.stop()
+
 # Latest price
 try:
-    latest_price = latest_value(weekly_wti, date_col="week", value_col="wti_price")
+    latest_price = latest_value(
+        filtered_wti,
+        date_col="week",
+        value_col="wti_price",
+    )
 except Exception:
     latest_price = None
 
 c1, c2 = st.columns(2)
-c1.metric("Weeks in dataset (2012–present)", f"{weekly_wti.shape[0]:,}")
-c2.metric("Latest WTI ($/barrel)", f"{latest_price:,.2f}" if latest_price is not None else "—")
+c1.metric("Weeks in selected range", f"{filtered_wti.shape[0]:,}")
+c2.metric(
+    "Latest WTI ($/barrel)",
+    f"{latest_price:,.2f}" if latest_price is not None else "—",
+)
 
 st.divider()
 st.subheader("WTI Price Over Time (Weekly)")
 
 fig, ax = plt.subplots()
-ax.plot(weekly_wti["week"], weekly_wti["wti_price"])
+ax.plot(filtered_wti["week"], filtered_wti["wti_price"])
 ax.set_xlabel("Week")
 ax.set_ylabel("WTI price ($/barrel)")
 st.pyplot(fig)
 
 with st.expander("Show data table"):
     st.dataframe(
-        weekly_wti.sort_values("week", ascending=False),
+        filtered_wti.sort_values("week", ascending=False),
         use_container_width=True,
     )
