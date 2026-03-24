@@ -97,9 +97,7 @@ def load_supply_data() -> pd.DataFrame:
     """
     df = client.query(query).to_dataframe()
     df["week"] = pd.to_datetime(df["week"])
-    df["total_product_supplied"] = pd.to_numeric(
-        df["total_product_supplied"], errors="coerce"
-    )
+    df["total_product_supplied"] = pd.to_numeric(df["total_product_supplied"], errors="coerce")
     df = df.dropna(subset=["week", "total_product_supplied"])
     return df
 
