@@ -1,20 +1,15 @@
 import matplotlib.pyplot as plt
 import pandas as pd
-import requests
 import streamlit as st
+from google.cloud import bigquery
+from google.oauth2 import service_account
 
-from tests.eia_part3 import (
-    build_df_from_eia_data,
-    filter_since,
-    latest_value,
-    sum_by_week,
-)
-from validation import eia_schema
+from tests.eia_part3 import latest_value
 
 st.set_page_config(page_title="Weekly U.S. Petroleum Supply", layout="wide")
 st.title("The Correlation between Weekly U.S. Petroleum Product Supplied and WTI Crude Oil Price")
 st.subheader("Team Members: Irina, Indra")
-st.caption("Source: U.S. Energy Information Administration (EIA)")
+st.caption("Source: BigQuery (EIA data)")
 
 # =========================
 # Project Proposal
@@ -77,62 +72,47 @@ with st.expander("Project Proposal", expanded=False):
 
 st.divider()
 
-API_KEY = st.secrets.get("EIA_API_KEY", None)
-if not API_KEY:
-    st.error("Missing EIA API key. Set it in Streamlit Secrets as EIA_API_KEY.")
-    st.stop()
-
-# --- API endpoint (supply) ---
-SUPPLY_URL = (
-    "https://api.eia.gov/v2/petroleum/cons/wpsup/data/"
-    f"?api_key={API_KEY}"
-    "&frequency=weekly"
-    "&data[0]=value"
-    "&sort[0][column]=period"
-    "&sort[0][direction]=desc"
-    "&offset=0&length=5000"
-)
+PROJECT_ID = "sipa-adv-c-giggling-wombat"
+TABLE_ID = f"{PROJECT_ID}.petroleum_supply.weekly_supply"
 
 
-@st.cache_data(ttl=60 * 60)  # cache 1 hour
-def fetch_supply_json(url: str) -> dict:
-    r = requests.get(url, timeout=30)
-    r.raise_for_status()
-    return r.json()
+@st.cache_resource
+def get_bq_client():
+    credentials = service_account.Credentials.from_service_account_info(
+        st.secrets["gcp_service_account"]
+    )
+    return bigquery.Client(
+        credentials=credentials,
+        project=credentials.project_id,
+    )
+
+
+@st.cache_data(ttl=60 * 60)
+def load_supply_data() -> pd.DataFrame:
+    client = get_bq_client()
+    query = f"""
+        SELECT week, total_product_supplied
+        FROM `{TABLE_ID}`
+        ORDER BY week
+    """
+    df = client.query(query).to_dataframe()
+    df["week"] = pd.to_datetime(df["week"])
+    df["total_product_supplied"] = pd.to_numeric(
+        df["total_product_supplied"], errors="coerce"
+    )
+    df = df.dropna(subset=["week", "total_product_supplied"])
+    return df
 
 
 try:
-    payload = fetch_supply_json(SUPPLY_URL)
+    weekly_total = load_supply_data()
 except Exception as e:
-    st.error(f"Failed to fetch supply data: {e}")
+    st.error(f"Failed to load supply data from BigQuery: {e}")
     st.stop()
 
-# IMPORTANT: build_df_from_eia_data expects list[dict], not the whole payload
-data = payload.get("response", {}).get("data", [])
-df = build_df_from_eia_data(
-    data=data,
-    period_col="period",
-    value_col="value",
-    new_date_col="week",
-)
-
-if df.empty:
-    st.error("EIA returned no usable data for supply (empty after parsing).")
+if weekly_total.empty:
+    st.error("No supply data found in BigQuery.")
     st.stop()
-
-# Filter to 2012–present first
-df = filter_since(df, date_col="week", start_date="2012-01-01")
-df = eia_schema.validate(df)
-
-if df.empty:
-    st.error("No data after filtering to 2012–present. Check parsing or EIA response.")
-    st.stop()
-
-# Aggregate weekly (safe even if already weekly)
-weekly_total = sum_by_week(df, date_col="week", value_col="value")
-
-# Rename for readability
-weekly_total = weekly_total.rename(columns={"value": "total_product_supplied"})
 
 # =========================
 # Interactive Week Filter
@@ -150,6 +130,7 @@ with col1:
         value=min_week,
         min_value=min_week,
         max_value=max_week,
+        key="supply_start_week",
     )
 
 with col2:
@@ -158,6 +139,7 @@ with col2:
         value=max_week,
         min_value=min_week,
         max_value=max_week,
+        key="supply_end_week",
     )
 
 if start_week > end_week:
@@ -173,7 +155,6 @@ if filtered_total.empty:
     st.warning("No data available for the selected date range.")
     st.stop()
 
-# Latest value
 try:
     latest_total = latest_value(
         filtered_total,
@@ -183,7 +164,6 @@ try:
 except Exception:
     latest_total = None
 
-# Metrics
 c1, c2 = st.columns(2)
 c1.metric("Weeks in selected range", f"{filtered_total.shape[0]:,}")
 c2.metric(
@@ -197,7 +177,7 @@ st.subheader("Total Product Supplied (Weekly, All Products Summed)")
 fig, ax = plt.subplots()
 ax.plot(filtered_total["week"], filtered_total["total_product_supplied"])
 ax.set_xlabel("Week")
-ax.set_ylabel("Total Product Supplied (sum of EIA 'value')")
+ax.set_ylabel("Total Product Supplied")
 st.pyplot(fig)
 
 with st.expander("Show data table"):

@@ -1,72 +1,54 @@
 import matplotlib.pyplot as plt
 import pandas as pd
-import requests
 import streamlit as st
+from google.cloud import bigquery
+from google.oauth2 import service_account
 
-from tests.eia_part3 import (
-    build_df_from_eia_data,
-    filter_since,
-    latest_value,
-    sum_by_week,
-)
+from tests.eia_part3 import latest_value
 
 st.set_page_config(page_title="WTI Price", layout="wide")
 st.title("WTI Crude Oil Price")
-st.caption("Source: U.S. Energy Information Administration (EIA)")
+st.caption("Source: BigQuery (EIA data)")
 
-API_KEY = st.secrets.get("EIA_API_KEY", None)
-if not API_KEY:
-    st.error("Missing EIA API key. Set it in Streamlit Secrets as EIA_API_KEY.")
-    st.stop()
+PROJECT_ID = "sipa-adv-c-giggling-wombat"
+TABLE_ID = f"{PROJECT_ID}.petroleum_supply.weekly_wti"
 
-URL = (
-    "https://api.eia.gov/v2/petroleum/pri/spt/data/"
-    f"?api_key={API_KEY}"
-    "&frequency=weekly"
-    "&data[0]=value"
-    "&facets[series][]=RWTC"
-    "&sort[0][column]=period"
-    "&sort[0][direction]=desc"
-    "&offset=0&length=5000"
-)
+
+@st.cache_resource
+def get_bq_client():
+    credentials = service_account.Credentials.from_service_account_info(
+        st.secrets["gcp_service_account"]
+    )
+    return bigquery.Client(
+        credentials=credentials,
+        project=credentials.project_id,
+    )
 
 
 @st.cache_data(ttl=60 * 60)
-def fetch_wti_json(url: str) -> dict:
-    r = requests.get(url, timeout=30)
-    r.raise_for_status()
-    return r.json()
+def load_wti_data() -> pd.DataFrame:
+    client = get_bq_client()
+    query = f"""
+        SELECT week, series, wti_price
+        FROM `{TABLE_ID}`
+        ORDER BY week
+    """
+    df = client.query(query).to_dataframe()
+    df["week"] = pd.to_datetime(df["week"])
+    df["wti_price"] = pd.to_numeric(df["wti_price"], errors="coerce")
+    df = df.dropna(subset=["week", "wti_price"])
+    return df
 
 
 try:
-    payload = fetch_wti_json(URL)
+    weekly_wti = load_wti_data()
 except Exception as e:
-    st.error(f"Failed to fetch WTI data: {e}")
+    st.error(f"Failed to load WTI data from BigQuery: {e}")
     st.stop()
 
-# IMPORTANT: build_df_from_eia_data expects list[dict]
-data = payload.get("response", {}).get("data", [])
-df = build_df_from_eia_data(
-    data=data,
-    period_col="period",
-    value_col="value",
-    new_date_col="week",
-)
-
-if df.empty:
-    st.error("EIA returned no usable data for WTI (empty after parsing).")
+if weekly_wti.empty:
+    st.error("No WTI data found in BigQuery.")
     st.stop()
-
-# Filter to 2012–present
-df = filter_since(df, date_col="week", start_date="2012-01-01")
-if df.empty:
-    st.error("No WTI data after filtering to 2012–present. Check parsing or EIA response.")
-    st.stop()
-
-# Aggregate weekly (safe even if already weekly)
-weekly_wti = sum_by_week(df, date_col="week", value_col="value").rename(
-    columns={"value": "wti_price"}
-)
 
 # =========================
 # Interactive Week Filter
@@ -109,7 +91,6 @@ if filtered_wti.empty:
     st.warning("No WTI data available for the selected date range.")
     st.stop()
 
-# Latest price
 try:
     latest_price = latest_value(
         filtered_wti,
