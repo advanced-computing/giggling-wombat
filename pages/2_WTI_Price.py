@@ -8,7 +8,8 @@ from tests.eia_part3 import latest_value
 
 st.set_page_config(page_title="WTI Price", layout="wide")
 st.title("WTI Crude Oil Price")
-st.caption("U.S. Energy Information Administration (EIA)")
+st.subheader("Team Members: Irina, Indra")
+st.caption("Source: U.S. Energy Information Administration (EIA)")
 
 PROJECT_ID = "sipa-adv-c-giggling-wombat"
 TABLE_ID = f"{PROJECT_ID}.petroleum_supply.weekly_wti"

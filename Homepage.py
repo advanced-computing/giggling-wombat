@@ -9,7 +9,7 @@ from tests.eia_part3 import latest_value
 st.set_page_config(page_title="Weekly U.S. Petroleum Supply", layout="wide")
 st.title("The Correlation between Weekly U.S. Petroleum Product Supplied and WTI Crude Oil Price")
 st.subheader("Team Members: Irina, Indra")
-st.caption("U.S. Energy Information Administration (EIA)")
+st.caption("Source: U.S. Energy Information Administration (EIA)")
 
 # =========================
 # Project Proposal
