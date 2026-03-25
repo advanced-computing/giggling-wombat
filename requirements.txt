@@ -17,3 +17,8 @@ altair==4.2.2
 pytest
 pytest-cov
 pandera
+google-cloud-bigquery
+db-dtypes
+pyarrow
+pandas-gbq
+google-auth
