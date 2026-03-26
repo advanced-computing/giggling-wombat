@@ -22,43 +22,6 @@ Weekly WTI Crude Oil Spot Price (RWTC) https://www.eia.gov/opendata/browser/petr
 
 ### Link to notebook: https://github.com/advanced-computing/giggling-wombat/blob/main/project.ipynb
 
-### Project Structure
-
-- `Homepage.py`  
-  Main dashboard page for weekly U.S. petroleum product supplied.
-
-- `pages/2_WTI_Price.py`  
-  Secondary dashboard page for WTI crude oil prices.
-
-- `load_to_bigquery.py`  
-  Script for pulling data from the EIA API and loading it into BigQuery.
-
-### Prerequisites
-
-Before running this project, make sure you have:
-
-- Python 3.10 or newer
-- `pip`
-- A Google account with access to the course Google Cloud project
-- A BigQuery dataset in the course project
-- An EIA API key
-- A service account JSON key for the Streamlit app
-
-## Setup instructions
-### 1. Clone the Repository
-
-```bash
-git clone <YOUR_REPO_URL>
-cd giggling-wombat
-
-### 2. Clone the Repository
-Create and activate a virtual environment
-python3 -m venv venv
-source venv/bin/activate
-
-### 3. Install dependencies
-pip install -r requirements.txt
-
 ### Target Visualization Description
 
 - Weekly time-series line chart of U.S. petroleum product supplied
@@ -82,3 +45,69 @@ Interpreting whether observed changes reflect demand-side behavior or reporting 
 So many events that distort oil supply every day, it is challenging to specify all of the events
 
 The data source does not support direct CSV downloads, requiring the use of an API. This presents a challenge for my typical workflow, which usually begins with a downloaded CSV file to start a project.
+
+### Project Structure
+
+- `Homepage.py`  
+  Main dashboard page for weekly U.S. petroleum product supplied.
+
+- `pages/2_WTI_Price.py`  
+  Secondary dashboard page for WTI crude oil prices.
+
+- `load_to_bigquery.py`  
+  Script for pulling data from the EIA API and loading it into BigQuery.
+
+### Prerequisites
+
+Before running this project, make sure you have:
+
+- Python 3.10 or newer
+- `pip`
+- A Google account with access to the course Google Cloud project
+- A BigQuery dataset in the course project
+- An EIA API key
+- A service account JSON key for the Streamlit app
+
+## Setup instructions
+```bash
+
+### 1. Clone the Repository
+git clone <YOUR_REPO_URL>
+cd giggling-wombat
+
+### 2. Clone the Repository
+Create and activate a virtual environment
+python3 -m venv venv
+source venv/bin/activate
+
+### 3. Install dependencies
+pip install -r requirements.txt
+
+### 4. Set your EIA API key
+export EIA_API_KEY="your_eia_api_key"
+
+### 5. Authenticate with Google Cloud
+Run the following command and log in with your Columbia Google account:
+gcloud auth application-default login
+
+### 6. Load data into BigQuery
+python3 load_to_bigquery.py
+This script loads data into the following BigQuery tables:
+
+petroleum_supply.weekly_supply
+petroleum_supply.weekly_supply_by_product
+petroleum_supply.weekly_wti
+
+The Google Cloud project used in this project is:
+
+sipa-adv-c-giggling-wombat
+
+The BigQuery dataset used in this project is:
+
+petroleum_supply
+
+### 7. Create local Streamlit secrets
+
+### 8. Run the app locally
+streamlit run Homepage.py
+
