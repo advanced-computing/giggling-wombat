@@ -102,6 +102,21 @@ def load_supply_data() -> pd.DataFrame:
     return df
 
 
+@st.cache_data(ttl=60 * 60)
+def load_supply_product_data() -> pd.DataFrame:
+    client = get_bq_client()
+    query = """
+        SELECT week, product_name, product_supplied
+        FROM `sipa-adv-c-giggling-wombat.petroleum_supply.weekly_supply_by_product`
+        ORDER BY week
+    """
+    df = client.query(query).to_dataframe()
+    df["week"] = pd.to_datetime(df["week"])
+    df["product_supplied"] = pd.to_numeric(df["product_supplied"], errors="coerce")
+    df = df.dropna(subset=["week", "product_name", "product_supplied"])
+    return df
+
+
 try:
     weekly_total = load_supply_data()
 except Exception as e:
@@ -113,32 +128,28 @@ if weekly_total.empty:
     st.stop()
 
 # =========================
-# Interactive Week Filter
+# Interactive Filters
 # =========================
-st.subheader("Filter by Week")
+st.sidebar.header("Filters")
 
 min_week = weekly_total["week"].min().date()
 max_week = weekly_total["week"].max().date()
 
-col1, col2 = st.columns(2)
+start_week = st.sidebar.date_input(
+    "Start week",
+    value=min_week,
+    min_value=min_week,
+    max_value=max_week,
+    key="supply_start_week",
+)
 
-with col1:
-    start_week = st.date_input(
-        "Start week",
-        value=min_week,
-        min_value=min_week,
-        max_value=max_week,
-        key="supply_start_week",
-    )
-
-with col2:
-    end_week = st.date_input(
-        "End week",
-        value=max_week,
-        min_value=min_week,
-        max_value=max_week,
-        key="supply_end_week",
-    )
+end_week = st.sidebar.date_input(
+    "End week",
+    value=max_week,
+    min_value=min_week,
+    max_value=max_week,
+    key="supply_end_week",
+)
 
 if start_week > end_week:
     st.error("Start week must be earlier than or equal to end week.")
@@ -152,6 +163,22 @@ filtered_total = weekly_total[
 if filtered_total.empty:
     st.warning("No data available for the selected date range.")
     st.stop()
+
+weekly_by_product = load_supply_product_data()
+
+filtered_product = weekly_by_product[
+    (weekly_by_product["week"] >= pd.to_datetime(start_week))
+    & (weekly_by_product["week"] <= pd.to_datetime(end_week))
+].copy()
+
+product_options = sorted(filtered_product["product_name"].dropna().unique().tolist())
+
+selected_products = st.sidebar.multiselect(
+    "Select product(s)",
+    options=product_options,
+    default=product_options[:3] if len(product_options) >= 3 else product_options,  # noqa: PLR2004
+    key="product_filter",
+)
 
 try:
     latest_total = latest_value(
@@ -178,7 +205,7 @@ ax.set_xlabel("Week")
 ax.set_ylabel("Total Product Supplied")
 st.pyplot(fig)
 
-with st.expander("Show data table"):
+with st.expander("Show total supply data table"):
     st.dataframe(
         filtered_total.sort_values("week", ascending=False),
         use_container_width=True,
@@ -188,3 +215,29 @@ st.caption(
     "Note: 'Product supplied' is often used as a proxy for consumption. "
     "This visualization is descriptive (not causal)."
 )
+
+st.divider()
+st.subheader("Product-Level Weekly Supply")
+
+if not selected_products:
+    st.warning("Please select at least one product from the sidebar.")
+else:
+    product_plot_df = filtered_product[
+        filtered_product["product_name"].isin(selected_products)
+    ].copy()
+
+    fig2, ax2 = plt.subplots()
+    for product in selected_products:
+        temp = product_plot_df[product_plot_df["product_name"] == product]
+        ax2.plot(temp["week"], temp["product_supplied"], label=product)
+
+    ax2.set_xlabel("Week")
+    ax2.set_ylabel("Product Supplied")
+    ax2.legend()
+    st.pyplot(fig2)
+
+    with st.expander("Show product-level data table"):
+        st.dataframe(
+            product_plot_df.sort_values(["product_name", "week"], ascending=[True, False]),
+            use_container_width=True,
+        )
