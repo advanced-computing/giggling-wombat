@@ -199,7 +199,7 @@ c2.metric(
 st.divider()
 st.subheader("Total Product Supplied (Weekly, All Products Summed)")
 
-fig, ax = plt.subplots()
+fig, ax = plt.subplots(figsize=(8, 4))
 ax.plot(filtered_total["week"], filtered_total["total_product_supplied"])
 ax.set_xlabel("Week")
 ax.set_ylabel("Total Product Supplied")
@@ -226,7 +226,7 @@ else:
         filtered_product["product_name"].isin(selected_products)
     ].copy()
 
-    fig2, ax2 = plt.subplots()
+    fig2, ax2 = plt.subplots(figsize=(8, 4))
     for product in selected_products:
         temp = product_plot_df[product_plot_df["product_name"] == product]
         ax2.plot(temp["week"], temp["product_supplied"], label=product)

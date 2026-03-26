@@ -8,7 +8,7 @@ from tests.eia_part3 import latest_value
 
 st.set_page_config(page_title="WTI Price", layout="wide")
 st.title("WTI Crude Oil Price")
-st.caption("Source: BigQuery (EIA data)")
+st.caption("Source: U.S. Energy Information Administration (EIA)")
 
 PROJECT_ID = "sipa-adv-c-giggling-wombat"
 TABLE_ID = f"{PROJECT_ID}.petroleum_supply.weekly_wti"
@@ -125,7 +125,7 @@ c3.metric(
 st.divider()
 st.subheader("WTI Price Over Time (Weekly)")
 
-fig, ax = plt.subplots()
+fig, ax = plt.subplots(figsize=(8, 4))
 ax.plot(filtered_wti["week"], filtered_wti["wti_price"], label="WTI price")
 ax.plot(
     filtered_wti["week"],
@@ -140,7 +140,7 @@ st.pyplot(fig)
 st.divider()
 st.subheader("Weekly Change in WTI Price")
 
-fig2, ax2 = plt.subplots()
+fig2, ax2 = plt.subplots(figsize=(8, 4))
 ax2.plot(filtered_wti["week"], filtered_wti["weekly_change"])
 ax2.axhline(0)
 ax2.set_xlabel("Week")
@@ -156,7 +156,7 @@ yearly_avg = (
     .rename(columns={"wti_price": "avg_wti_price"})
 )
 
-fig3, ax3 = plt.subplots()
+fig3, ax3 = plt.subplots(figsize=(8, 4))
 ax3.bar(yearly_avg["year"], yearly_avg["avg_wti_price"])
 ax3.set_xlabel("Year")
 ax3.set_ylabel("Average WTI price ($/barrel)")
