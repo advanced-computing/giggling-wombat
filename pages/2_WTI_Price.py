@@ -50,30 +50,36 @@ if weekly_wti.empty:
     st.error("No WTI data found in BigQuery.")
     st.stop()
 
-st.subheader("Filter by Week")
+# =========================
+# Sidebar Filters
+# =========================
+st.sidebar.header("Filters")
 
 min_week = weekly_wti["week"].min().date()
 max_week = weekly_wti["week"].max().date()
 
-col1, col2 = st.columns(2)
+start_week = st.sidebar.date_input(
+    "Start week",
+    value=min_week,
+    min_value=min_week,
+    max_value=max_week,
+    key="wti_start_week",
+)
 
-with col1:
-    start_week = st.date_input(
-        "Start week",
-        value=min_week,
-        min_value=min_week,
-        max_value=max_week,
-        key="wti_start_week",
-    )
+end_week = st.sidebar.date_input(
+    "End week",
+    value=max_week,
+    min_value=min_week,
+    max_value=max_week,
+    key="wti_end_week",
+)
 
-with col2:
-    end_week = st.date_input(
-        "End week",
-        value=max_week,
-        min_value=min_week,
-        max_value=max_week,
-        key="wti_end_week",
-    )
+ma_window = st.sidebar.selectbox(
+    "Moving average window",
+    options=[4, 8, 12],
+    index=0,
+    key="wti_ma_window",
+)
 
 if start_week > end_week:
     st.error("Start week must be earlier than or equal to end week.")
@@ -89,7 +95,7 @@ if filtered_wti.empty:
     st.stop()
 
 filtered_wti = filtered_wti.sort_values("week").copy()
-filtered_wti["wti_ma_4"] = filtered_wti["wti_price"].rolling(4).mean()
+filtered_wti["wti_ma"] = filtered_wti["wti_price"].rolling(ma_window).mean()
 filtered_wti["weekly_change"] = filtered_wti["wti_price"].diff()
 filtered_wti["year"] = filtered_wti["week"].dt.year
 
@@ -121,7 +127,11 @@ st.subheader("WTI Price Over Time (Weekly)")
 
 fig, ax = plt.subplots()
 ax.plot(filtered_wti["week"], filtered_wti["wti_price"], label="WTI price")
-ax.plot(filtered_wti["week"], filtered_wti["wti_ma_4"], label="4-week moving average")
+ax.plot(
+    filtered_wti["week"],
+    filtered_wti["wti_ma"],
+    label=f"{ma_window}-week moving average",
+)
 ax.set_xlabel("Week")
 ax.set_ylabel("WTI price ($/barrel)")
 ax.legend()
