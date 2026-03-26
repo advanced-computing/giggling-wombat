@@ -1,5 +1,7 @@
-## Project 1 part 1: An Analysis of U.S. Petroleum Product Supplied Data 
+## The Correlation between Weekly U.S. Petroleum Product Supplied and WTI Crude Oil Price Dashboard
 team: giggling wombat
+
+This project analyzes weekly U.S. petroleum product supplied data and WTI crude oil spot price data using the EIA API. Our goal is to explore how petroleum supply and crude oil prices evolve over time and whether they exhibit similar patterns during major economic or energy market events.
 
 <a target="_blank" href="https://colab.research.google.com/github/advanced-computing/giggling-wombat/blob/main/project.ipynb">
   <img src="https://colab.research.google.com/assets/colab-badge.svg" alt="Open In Colab"/>
@@ -7,35 +9,69 @@ team: giggling wombat
 
 ### What dataset are you going to use?
 
-Link: https://www.eia.gov/opendata/browser/petroleum/cons/wpsup
+Weekly U.S. Petroleum Product Supplied https://www.eia.gov/opendata/browser/petroleum/cons/wpsup
+
+Weekly WTI Crude Oil Spot Price (RWTC) https://www.eia.gov/opendata/browser/petroleum/pri/spt
 
 ### What are your research question(s)?
 
-How does the U.S. petroleum product supply change on a weekly basis over time?
-
-Are there clear seasonal patterns or a regular annual change that happens for petroleum product supply?
-
-To what extent do major economic and societal disruptions (e.g., the COVID-19 period, after the Paris Agreement) impact the volume of U.S. petroleum demand?
+- How has U.S. petroleum product supplied changed since 2012?
+- How has WTI crude oil price changed over the same period?
+- Do petroleum supply and crude oil prices show similar patterns over time?
+- Are there noticeable disruptions during major events such as the COVID-19 period?
 
 ### Link to notebook: https://github.com/advanced-computing/giggling-wombat/blob/main/project.ipynb
 
+### Project Structure
+
+- `Homepage.py`  
+  Main dashboard page for weekly U.S. petroleum product supplied.
+
+- `pages/2_WTI_Price.py`  
+  Secondary dashboard page for WTI crude oil prices.
+
+- `load_to_bigquery.py`  
+  Script for pulling data from the EIA API and loading it into BigQuery.
+
+### Prerequisites
+
+Before running this project, make sure you have:
+
+- Python 3.10 or newer
+- `pip`
+- A Google account with access to the course Google Cloud project
+- A BigQuery dataset in the course project
+- An EIA API key
+- A service account JSON key for the Streamlit app
+
+## Setup instructions
+### 1. Clone the Repository
+
+```bash
+git clone <YOUR_REPO_URL>
+cd giggling-wombat
+
+### 2. Clone the Repository
+Create and activate a virtual environment
+python3 -m venv venv
+source venv/bin/activate
+
+### 3. Install dependencies
+pip install -r requirements.txt
+
 ### Target Visualization Description
 
-The primary visualization will be a time-series line chart displaying weekly petroleum products supplied in the U.S.
-
-X-axis: Week
-
-Y-axis: Petroleum product supplied per week
-Optional features: Vertical reference line to show specific events
+- Weekly time-series line chart of U.S. petroleum product supplied
+- Weekly time-series line chart of WTI crude oil price
+- Visual comparison of trends between the two series
 
 
 ### What are your known unknowns?
 
-Weekly oil supply fluctuates constantly due to specific events. However, since not all of these events can be individually specified, some external factors remain 'known unknowns' in this field.
-
-Which external factors (seasonality, economic shocks, policy changes) most strongly influence short-term fluctuations. 
-
-It is not yet known whether recent years alone or a longer historical period will best highlight relevant trends.
+- Petroleum product supplied is a proxy for demand rather than a direct measure
+- Weekly data can be noisy and may obscure long-term trends
+- Oil prices and supply may react to different economic forces
+- The project depends on API data retrieval instead of downloadable CSV files
 
 ### What challenges do you anticipate?
 
