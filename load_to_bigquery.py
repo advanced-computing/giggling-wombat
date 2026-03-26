@@ -16,6 +16,7 @@ TABLE = "wti_prices"
 API_KEY = "qIgxlen05S7xFsozHUuJ4HXned44qT8RF3OewtSv"
 
 SUPPLY_TABLE = "weekly_supply"
+SUPPLY_PRODUCT_TABLE = "weekly_supply_by_product"
 WTI_TABLE = "weekly_wti"
 
 SUPPLY_URL = (
@@ -103,6 +104,41 @@ def upload_df(df: pd.DataFrame, table_name: str, credentials) -> None:
     )
 
 
+def build_supply_product_df(payload: dict) -> pd.DataFrame:
+    data = payload.get("response", {}).get("data", [])
+    df = pd.DataFrame(data)
+
+    if df.empty:
+        raise ValueError("No usable supply data returned from EIA.")
+
+    keep_cols = ["period", "value", "product-name", "product"]
+    existing_cols = [col for col in keep_cols if col in df.columns]
+    df = df[existing_cols].copy()
+
+    df["week"] = pd.to_datetime(df["period"], errors="coerce")
+    df["value"] = pd.to_numeric(df["value"], errors="coerce")
+
+    if "product-name" in df.columns:
+        df["product_name"] = df["product-name"]
+    elif "product" in df.columns:
+        df["product_name"] = df["product"]
+    else:
+        raise ValueError("No product column found in supply data.")
+
+    df = df.dropna(subset=["week", "value", "product_name"])
+    df = df[df["week"] >= pd.Timestamp("2012-01-01")]
+
+    weekly_by_product = (
+        df.groupby(["week", "product_name"], as_index=False)["value"]
+        .sum()
+        .rename(columns={"value": "product_supplied"})
+        .sort_values(["product_name", "week"])
+        .reset_index(drop=True)
+    )
+
+    return weekly_by_product
+
+
 def main():
     credentials = pydata_google_auth.get_user_credentials(
         SCOPES,
@@ -110,9 +146,14 @@ def main():
     )
 
     supply_payload = fetch_eia_json(SUPPLY_URL)
+
     supply_df = build_supply_df(supply_payload)
     upload_df(supply_df, SUPPLY_TABLE, credentials)
     print(f"Uploaded {len(supply_df)} rows to {DATASET}.{SUPPLY_TABLE}")
+
+    supply_product_df = build_supply_product_df(supply_payload)
+    upload_df(supply_product_df, SUPPLY_PRODUCT_TABLE, credentials)
+    print(f"Uploaded {len(supply_product_df)} rows to {DATASET}.{SUPPLY_PRODUCT_TABLE}")
 
     wti_payload = fetch_eia_json(WTI_URL)
     wti_df = build_wti_df(wti_payload)

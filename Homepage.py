@@ -102,6 +102,21 @@ def load_supply_data() -> pd.DataFrame:
     return df
 
 
+@st.cache_data(ttl=60 * 60)
+def load_supply_product_data() -> pd.DataFrame:
+    client = get_bq_client()
+    query = """
+        SELECT week, product_name, product_supplied
+        FROM `sipa-adv-c-giggling-wombat.petroleum_supply.weekly_supply_by_product`
+        ORDER BY week
+    """
+    df = client.query(query).to_dataframe()
+    df["week"] = pd.to_datetime(df["week"])
+    df["product_supplied"] = pd.to_numeric(df["product_supplied"], errors="coerce")
+    df = df.dropna(subset=["week", "product_name", "product_supplied"])
+    return df
+
+
 try:
     weekly_total = load_supply_data()
 except Exception as e:
@@ -188,3 +203,44 @@ st.caption(
     "Note: 'Product supplied' is often used as a proxy for consumption. "
     "This visualization is descriptive (not causal)."
 )
+
+st.divider()
+st.subheader("Product-Level Weekly Supply")
+
+weekly_by_product = load_supply_product_data()
+
+filtered_product = weekly_by_product[
+    (weekly_by_product["week"] >= pd.to_datetime(start_week))
+    & (weekly_by_product["week"] <= pd.to_datetime(end_week))
+].copy()
+
+product_options = sorted(filtered_product["product_name"].dropna().unique().tolist())
+
+selected_products = st.multiselect(
+    "Select product(s)",
+    options=product_options,
+    default=product_options[:3] if len(product_options) >= 3 else product_options,  # noqa: PLR2004
+)
+
+if not selected_products:
+    st.warning("Please select at least one product.")
+else:
+    product_plot_df = filtered_product[
+        filtered_product["product_name"].isin(selected_products)
+    ].copy()
+
+    fig2, ax2 = plt.subplots()
+    for product in selected_products:
+        temp = product_plot_df[product_plot_df["product_name"] == product]
+        ax2.plot(temp["week"], temp["product_supplied"], label=product)
+
+    ax2.set_xlabel("Week")
+    ax2.set_ylabel("Product Supplied")
+    ax2.legend()
+    st.pyplot(fig2)
+
+    with st.expander("Show product-level data table"):
+        st.dataframe(
+            product_plot_df.sort_values(["product_name", "week"], ascending=[True, False]),
+            use_container_width=True,
+        )
