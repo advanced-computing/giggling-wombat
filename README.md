@@ -79,23 +79,30 @@ Before running this project, make sure you have:
 git clone <YOUR_REPO_URL>
 cd giggling-wombat
 
-### 2. Clone the Repository
-Create and activate a virtual environment
+2. Create and activate a virtual environment
 python3 -m venv venv
 source venv/bin/activate
 
-### 3. Install dependencies
+3. Install dependencies
 pip install -r requirements.txt
 
-### 4. Set your EIA API key
+4. Set your EIA API key
+
+Before running the load script, export your EIA API key:
+
 export EIA_API_KEY="your_eia_api_key"
 
-### 5. Authenticate with Google Cloud
+5. Authenticate with Google Cloud
+
 Run the following command and log in with your Columbia Google account:
+
 gcloud auth application-default login
 
-### 6. Load data into BigQuery
+6. Load data into BigQuery
+
+Run:
 python3 load_to_bigquery.py
+
 This script loads data into the following BigQuery tables:
 
 petroleum_supply.weekly_supply
@@ -110,8 +117,15 @@ The BigQuery dataset used in this project is:
 
 petroleum_supply
 
-### 7. Create local Streamlit secrets
+7. Create local Streamlit secrets
 
-### 8. Run the app locally
+Create a file at:
+
+.streamlit/secrets.toml
+
+Add the following into your secrets: (please reach to us in person and we can give you the key!)
+
+Make sure .streamlit/secrets.toml is included in .gitignore so it is not committed to GitHub.
+
+8. Run the app locally
 streamlit run Homepage.py
-
