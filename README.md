@@ -7,6 +7,10 @@ This project analyzes weekly U.S. petroleum product supplied data and WTI crude 
   <img src="https://colab.research.google.com/assets/colab-badge.svg" alt="Open In Colab"/>
 </a>
 
+## Data Loading Approach
+
+We use batch loading for this project. Our data comes from the EIA API and is updated weekly, so real-time streaming is not necessary. We use a local Python script (`load_to_bigquery.py`) to pull data from the API and load it into BigQuery tables. The Streamlit app then reads from BigQuery instead of calling the API directly. This approach improves reliability, simplifies deployment, and helps the app load faster.
+
 ### What dataset are you going to use?
 
 Weekly U.S. Petroleum Product Supplied https://www.eia.gov/opendata/browser/petroleum/cons/wpsup

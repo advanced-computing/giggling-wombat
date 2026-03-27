@@ -1,3 +1,5 @@
+import time
+
 import matplotlib.pyplot as plt
 import pandas as pd
 import streamlit as st
@@ -5,6 +7,8 @@ from google.cloud import bigquery
 from google.oauth2 import service_account
 
 from tests.eia_part3 import latest_value
+
+start_time = time.time()
 
 st.set_page_config(page_title="WTI Price", layout="wide")
 st.title("WTI Crude Oil Price")
@@ -167,3 +171,6 @@ with st.expander("Show data table"):
         filtered_wti.sort_values("week", ascending=False),
         use_container_width=True,
     )
+
+elapsed = time.time() - start_time
+st.caption(f"Page loaded in {elapsed:.2f} seconds")
