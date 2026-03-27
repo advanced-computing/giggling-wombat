@@ -44,6 +44,90 @@ def load_wti_data() -> pd.DataFrame:
     return df
 
 
+def generate_wti_interpretation(df: pd.DataFrame, ma_window: int) -> str:
+    """
+    Generate a simple real-time interpretation for filtered WTI data.
+    """
+    if df.empty or len(df) < 4:
+        return "Not enough data to generate interpretation."
+
+    df = df.sort_values("week").reset_index(drop=True)
+
+    latest_price = df["wti_price"].iloc[-1]
+    prev_price = df["wti_price"].iloc[-2]
+    latest_change = latest_price - prev_price
+    latest_pct_change = (latest_change / prev_price * 100) if prev_price != 0 else 0
+
+    recent_avg = df["wti_price"].tail(ma_window).mean()
+
+    recent_12w = df["wti_price"].tail(min(12, len(df)))
+    high_12w = recent_12w.max()
+    low_12w = recent_12w.min()
+
+    recent_std = recent_12w.std()
+
+    if latest_change > 1:
+        trend_text = (
+            f"WTI increased by ${latest_change:.2f} "
+            f"({latest_pct_change:.2f}%) from the previous week, "
+            "suggesting short-term upward momentum."
+        )
+    elif latest_change < -1:
+        trend_text = (
+            f"WTI decreased by ${abs(latest_change):.2f} "
+            f"({abs(latest_pct_change):.2f}%) from the previous week, "
+            "suggesting short-term downward pressure."
+        )
+    else:
+        trend_text = (
+            f"WTI changed only slightly by ${latest_change:.2f} "
+            f"({latest_pct_change:.2f}%) from the previous week, "
+            "indicating relatively stable short-term movement."
+        )
+
+    if latest_price > recent_avg:
+        avg_text = (
+            f"The latest price (${latest_price:.2f}) is above the "
+            f"{ma_window}-week moving average (${recent_avg:.2f}), "
+            "which may indicate stronger recent market conditions."
+        )
+    elif latest_price < recent_avg:
+        avg_text = (
+            f"The latest price (${latest_price:.2f}) is below the "
+            f"{ma_window}-week moving average (${recent_avg:.2f}), "
+            "which may suggest weaker short-term pricing."
+        )
+    else:
+        avg_text = (
+            f"The latest price is in line with the {ma_window}-week "
+            f"moving average (${recent_avg:.2f})."
+        )
+
+    if latest_price >= high_12w * 0.98:
+        range_text = (
+            f"WTI is near its recent 12-week high (${high_12w:.2f}), "
+            "indicating that prices remain elevated relative to recent history."
+        )
+    elif latest_price <= low_12w * 1.02:
+        range_text = (
+            f"WTI is near its recent 12-week low (${low_12w:.2f}), "
+            "suggesting relatively weak pricing compared with recent weeks."
+        )
+    else:
+        range_text = (
+            f"WTI remains within its recent 12-week range of "
+            f"${low_12w:.2f} to ${high_12w:.2f}, indicating a more moderate "
+            "position in the recent trend."
+        )
+
+    if pd.notna(recent_std) and recent_std > 5:
+        vol_text = "Recent price movements have been relatively volatile."
+    else:
+        vol_text = "Recent price movements have been relatively stable."
+
+    return f"{trend_text} {avg_text} {range_text} {vol_text}"
+
+
 try:
     weekly_wti = load_wti_data()
 except Exception as e:
@@ -140,6 +224,11 @@ ax.set_xlabel("Week")
 ax.set_ylabel("WTI price ($/barrel)")
 ax.legend()
 st.pyplot(fig)
+
+st.divider()
+st.subheader("Real-Time Interpretation")
+interpretation = generate_wti_interpretation(filtered_wti, ma_window)
+st.markdown(interpretation.replace("$", r"\$"))
 
 st.divider()
 st.subheader("Weekly Change in WTI Price")
