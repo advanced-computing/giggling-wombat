@@ -48,7 +48,7 @@ def generate_wti_interpretation(df: pd.DataFrame, ma_window: int) -> str:
     """
     Generate a simple real-time interpretation for filtered WTI data.
     """
-    if df.empty or len(df) < 4:
+    if df.empty or len(df) < 4:  # noqa: PLR2004
         return "Not enough data to generate interpretation."
 
     df = df.sort_values("week").reset_index(drop=True)
@@ -120,7 +120,7 @@ def generate_wti_interpretation(df: pd.DataFrame, ma_window: int) -> str:
             "position in the recent trend."
         )
 
-    if pd.notna(recent_std) and recent_std > 5:
+    if pd.notna(recent_std) and recent_std > 5:  # noqa: PLR2004
         vol_text = "Recent price movements have been relatively volatile."
     else:
         vol_text = "Recent price movements have been relatively stable."
