@@ -11,7 +11,7 @@ from tests.eia_part3 import latest_value
 start_time = time.time()
 
 st.set_page_config(page_title="Weekly U.S. Petroleum Supply", layout="wide")
-st.title("The Correlation between Weekly U.S. Petroleum Product Supplied and WTI Crude Oil Price")
+st.title("U.S. Petroleum & WTI Weekly Monitor")
 st.subheader("Team Members: Irina, Indra")
 st.caption("Source: U.S. Energy Information Administration (EIA)")
 
