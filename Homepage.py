@@ -1,3 +1,5 @@
+import time
+
 import matplotlib.pyplot as plt
 import pandas as pd
 import streamlit as st
@@ -5,6 +7,8 @@ from google.cloud import bigquery
 from google.oauth2 import service_account
 
 from tests.eia_part3 import latest_value
+
+start_time = time.time()
 
 st.set_page_config(page_title="Weekly U.S. Petroleum Supply", layout="wide")
 st.title("The Correlation between Weekly U.S. Petroleum Product Supplied and WTI Crude Oil Price")
@@ -241,3 +245,6 @@ else:
             product_plot_df.sort_values(["product_name", "week"], ascending=[True, False]),
             use_container_width=True,
         )
+
+elapsed = time.time() - start_time
+st.caption(f"Page loaded in {elapsed:.2f} seconds")
