@@ -75,7 +75,7 @@ Before running this project, make sure you have:
 ## Setup instructions
 ```bash
 
-### 1. Clone the Repository
+1. Clone the Repository
 git clone <YOUR_REPO_URL>
 cd giggling-wombat
 
