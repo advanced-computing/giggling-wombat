@@ -1,0 +1,35 @@
+name: Update Energy Data
+
+on:
+  schedule:
+    - cron: "0 12 * * 1"
+  workflow_dispatch:
+
+jobs:
+  update_data:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run weekly supply ETL
+        env:
+          GCP_SERVICE_ACCOUNT: ${{ secrets.GCP_SERVICE_ACCOUNT }}
+          EIA_API_KEY: ${{ secrets.EIA_API_KEY }}
+        run: python scripts/load_weekly_supply_data.py
+
+      - name: Run WTI ETL
+        env:
+          GCP_SERVICE_ACCOUNT: ${{ secrets.GCP_SERVICE_ACCOUNT }}
+          EIA_API_KEY: ${{ secrets.EIA_API_KEY }}
+        run: python scripts/load_wti_data.py
