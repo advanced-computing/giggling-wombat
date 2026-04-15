@@ -10,18 +10,14 @@ PROJECT_ID = "sipa-adv-c-giggling-wombat"
 DATASET_ID = "petroleum_supply"
 
 WEEKLY_SUPPLY_TABLE = f"{PROJECT_ID}.{DATASET_ID}.weekly_supply"
-WEEKLY_SUPPLY_BY_PRODUCT_TABLE = (
-    f"{PROJECT_ID}.{DATASET_ID}.weekly_supply_by_product"
-)
+WEEKLY_SUPPLY_BY_PRODUCT_TABLE = f"{PROJECT_ID}.{DATASET_ID}.weekly_supply_by_product"
 
 REQUEST_TIMEOUT = 30
 
 
 def get_bq_client():
     service_account_info = json.loads(os.environ["GCP_SERVICE_ACCOUNT"])
-    credentials = service_account.Credentials.from_service_account_info(
-        service_account_info
-    )
+    credentials = service_account.Credentials.from_service_account_info(service_account_info)
     return bigquery.Client(
         credentials=credentials,
         project=credentials.project_id,
@@ -79,9 +75,7 @@ def find_product_column(df: pd.DataFrame) -> str:
     for col in candidate_columns:
         if col in df.columns:
             return col
-    raise KeyError(
-        "Could not find a product column in the EIA supply data."
-    )
+    raise KeyError("Could not find a product column in the EIA supply data.")
 
 
 def build_weekly_supply_by_product(df: pd.DataFrame) -> pd.DataFrame:
@@ -119,11 +113,7 @@ def main():
     print(f"Loaded {len(weekly_supply)} rows into {WEEKLY_SUPPLY_TABLE}")
 
     load_table(weekly_supply_by_product, WEEKLY_SUPPLY_BY_PRODUCT_TABLE)
-    print(
-        "Loaded "
-        f"{len(weekly_supply_by_product)} rows into "
-        f"{WEEKLY_SUPPLY_BY_PRODUCT_TABLE}"
-    )
+    print(f"Loaded {len(weekly_supply_by_product)} rows into {WEEKLY_SUPPLY_BY_PRODUCT_TABLE}")
 
 
 if __name__ == "__main__":

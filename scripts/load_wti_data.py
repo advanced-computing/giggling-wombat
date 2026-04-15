@@ -16,9 +16,7 @@ REQUEST_TIMEOUT = 30
 
 def get_bq_client():
     service_account_info = json.loads(os.environ["GCP_SERVICE_ACCOUNT"])
-    credentials = service_account.Credentials.from_service_account_info(
-        service_account_info
-    )
+    credentials = service_account.Credentials.from_service_account_info(service_account_info)
     return bigquery.Client(
         credentials=credentials,
         project=credentials.project_id,
