@@ -77,7 +77,9 @@ with st.expander("Project Proposal", expanded=False):
 st.divider()
 
 PROJECT_ID = "sipa-adv-c-giggling-wombat"
-TABLE_ID = f"{PROJECT_ID}.petroleum_supply.weekly_supply"
+TOTAL_SUPPLY_TABLE_ID = f"{PROJECT_ID}.petroleum_supply.weekly_supply"
+PRODUCT_SUPPLY_TABLE_ID = f"{PROJECT_ID}.petroleum_supply.weekly_supply_by_product"
+DEFAULT_PRODUCT_COUNT = 3
 
 
 @st.cache_resource
@@ -95,29 +97,29 @@ def get_bq_client():
 def load_supply_data() -> pd.DataFrame:
     client = get_bq_client()
     query = f"""
-        SELECT week, total_product_supplied
-        FROM `{TABLE_ID}`
+        SELECT week, total_supply
+        FROM `{TOTAL_SUPPLY_TABLE_ID}`
         ORDER BY week
     """
     df = client.query(query).to_dataframe()
     df["week"] = pd.to_datetime(df["week"])
-    df["total_product_supplied"] = pd.to_numeric(df["total_product_supplied"], errors="coerce")
-    df = df.dropna(subset=["week", "total_product_supplied"])
+    df["total_supply"] = pd.to_numeric(df["total_supply"], errors="coerce")
+    df = df.dropna(subset=["week", "total_supply"])
     return df
 
 
 @st.cache_data(ttl=60 * 60)
 def load_supply_product_data() -> pd.DataFrame:
     client = get_bq_client()
-    query = """
-        SELECT week, product_name, product_supplied
-        FROM `sipa-adv-c-giggling-wombat.petroleum_supply.weekly_supply_by_product`
+    query = f"""
+        SELECT week, product, product_supplied
+        FROM `{PRODUCT_SUPPLY_TABLE_ID}`
         ORDER BY week
     """
     df = client.query(query).to_dataframe()
     df["week"] = pd.to_datetime(df["week"])
     df["product_supplied"] = pd.to_numeric(df["product_supplied"], errors="coerce")
-    df = df.dropna(subset=["week", "product_name", "product_supplied"])
+    df = df.dropna(subset=["week", "product", "product_supplied"])
     return df
 
 
@@ -168,19 +170,27 @@ if filtered_total.empty:
     st.warning("No data available for the selected date range.")
     st.stop()
 
-weekly_by_product = load_supply_product_data()
+try:
+    weekly_by_product = load_supply_product_data()
+except Exception as e:
+    st.error(f"Failed to load product-level supply data from BigQuery: {e}")
+    st.stop()
 
 filtered_product = weekly_by_product[
     (weekly_by_product["week"] >= pd.to_datetime(start_week))
     & (weekly_by_product["week"] <= pd.to_datetime(end_week))
 ].copy()
 
-product_options = sorted(filtered_product["product_name"].dropna().unique().tolist())
+product_options = sorted(filtered_product["product"].dropna().unique().tolist())
 
 selected_products = st.sidebar.multiselect(
     "Select product(s)",
     options=product_options,
-    default=product_options[:3] if len(product_options) >= 3 else product_options,  # noqa: PLR2004
+    default=(
+        product_options[:DEFAULT_PRODUCT_COUNT]
+        if len(product_options) >= DEFAULT_PRODUCT_COUNT
+        else product_options
+    ),
     key="product_filter",
 )
 
@@ -188,7 +198,7 @@ try:
     latest_total = latest_value(
         filtered_total,
         date_col="week",
-        value_col="total_product_supplied",
+        value_col="total_supply",
     )
 except Exception:
     latest_total = None
@@ -204,7 +214,7 @@ st.divider()
 st.subheader("Total Product Supplied (Weekly, All Products Summed)")
 
 fig, ax = plt.subplots(figsize=(8, 4))
-ax.plot(filtered_total["week"], filtered_total["total_product_supplied"])
+ax.plot(filtered_total["week"], filtered_total["total_supply"])
 ax.set_xlabel("Week")
 ax.set_ylabel("Total Product Supplied")
 st.pyplot(fig)
@@ -226,13 +236,11 @@ st.subheader("Product-Level Weekly Supply")
 if not selected_products:
     st.warning("Please select at least one product from the sidebar.")
 else:
-    product_plot_df = filtered_product[
-        filtered_product["product_name"].isin(selected_products)
-    ].copy()
+    product_plot_df = filtered_product[filtered_product["product"].isin(selected_products)].copy()
 
     fig2, ax2 = plt.subplots(figsize=(8, 4))
     for product in selected_products:
-        temp = product_plot_df[product_plot_df["product_name"] == product]
+        temp = product_plot_df[product_plot_df["product"] == product]
         ax2.plot(temp["week"], temp["product_supplied"], label=product)
 
     ax2.set_xlabel("Week")
@@ -242,7 +250,7 @@ else:
 
     with st.expander("Show product-level data table"):
         st.dataframe(
-            product_plot_df.sort_values(["product_name", "week"], ascending=[True, False]),
+            product_plot_df.sort_values(["product", "week"], ascending=[True, False]),
             use_container_width=True,
         )
 
