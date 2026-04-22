@@ -112,14 +112,14 @@ def load_supply_data() -> pd.DataFrame:
 def load_supply_product_data() -> pd.DataFrame:
     client = get_bq_client()
     query = f"""
-        SELECT week, product, product_supplied
+        SELECT week, product, product_name, product_supplied
         FROM `{PRODUCT_SUPPLY_TABLE_ID}`
         ORDER BY week
     """
     df = client.query(query).to_dataframe()
     df["week"] = pd.to_datetime(df["week"])
     df["product_supplied"] = pd.to_numeric(df["product_supplied"], errors="coerce")
-    df = df.dropna(subset=["week", "product", "product_supplied"])
+    df = df.dropna(subset=["week", "product", "product_name", "product_supplied"])
     return df
 
 
@@ -181,7 +181,7 @@ filtered_product = weekly_by_product[
     & (weekly_by_product["week"] <= pd.to_datetime(end_week))
 ].copy()
 
-product_options = sorted(filtered_product["product"].dropna().unique().tolist())
+product_options = sorted(filtered_product["product_name"].dropna().unique().tolist())
 
 selected_products = st.sidebar.multiselect(
     "Select product(s)",
@@ -236,12 +236,14 @@ st.subheader("Product-Level Weekly Supply")
 if not selected_products:
     st.warning("Please select at least one product from the sidebar.")
 else:
-    product_plot_df = filtered_product[filtered_product["product"].isin(selected_products)].copy()
+    product_plot_df = filtered_product[
+        filtered_product["product_name"].isin(selected_products)
+    ].copy()
 
     fig2, ax2 = plt.subplots(figsize=(8, 4))
-    for product in selected_products:
-        temp = product_plot_df[product_plot_df["product"] == product]
-        ax2.plot(temp["week"], temp["product_supplied"], label=product)
+    for product_name in selected_products:
+        temp = product_plot_df[product_plot_df["product_name"] == product_name]
+        ax2.plot(temp["week"], temp["product_supplied"], label=product_name)
 
     ax2.set_xlabel("Week")
     ax2.set_ylabel("Product Supplied")
@@ -250,7 +252,7 @@ else:
 
     with st.expander("Show product-level data table"):
         st.dataframe(
-            product_plot_df.sort_values(["product", "week"], ascending=[True, False]),
+            product_plot_df.sort_values(["product_name", "week"], ascending=[True, False]),
             use_container_width=True,
         )
 
