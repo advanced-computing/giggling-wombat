@@ -64,33 +64,57 @@ def build_weekly_supply(df: pd.DataFrame) -> pd.DataFrame:
     return weekly_supply
 
 
-def find_product_column(df: pd.DataFrame) -> str:
-    candidate_columns = [
-        "product",
-        "product-name",
-        "product_name",
-        "process",
-        "name",
-    ]
-    for col in candidate_columns:
+def find_first_existing_column(df: pd.DataFrame, candidates: list[str]) -> str | None:
+    for col in candidates:
         if col in df.columns:
             return col
-    raise KeyError("Could not find a product column in the EIA supply data.")
+    return None
 
 
 def build_weekly_supply_by_product(df: pd.DataFrame) -> pd.DataFrame:
-    product_col = find_product_column(df)
+    product_code_col = find_first_existing_column(
+        df,
+        [
+            "product",
+            "product_code",
+            "product-code",
+            "process",
+        ],
+    )
+
+    product_name_col = find_first_existing_column(
+        df,
+        [
+            "product-name",
+            "product_name",
+            "name",
+            "productName",
+        ],
+    )
+
+    if product_code_col is None and product_name_col is None:
+        raise KeyError("Could not find product code or product name columns.")
+
+    working_df = df.copy()
+
+    if product_code_col is None:
+        working_df["product"] = working_df[product_name_col]
+    else:
+        working_df["product"] = working_df[product_code_col]
+
+    if product_name_col is None:
+        working_df["product_name"] = working_df["product"]
+    else:
+        working_df["product_name"] = working_df[product_name_col]
 
     weekly_supply_by_product = (
-        df.groupby(["week", product_col], as_index=False)["value"]
+        working_df.groupby(
+            ["week", "product", "product_name"],
+            as_index=False,
+        )["value"]
         .sum()
-        .rename(
-            columns={
-                product_col: "product",
-                "value": "product_supplied",
-            }
-        )
-        .sort_values(["week", "product"])
+        .rename(columns={"value": "product_supplied"})
+        .sort_values(["week", "product_name"])
         .reset_index(drop=True)
     )
     return weekly_supply_by_product
