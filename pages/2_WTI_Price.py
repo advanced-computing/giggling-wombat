@@ -11,11 +11,42 @@ from tests.eia_part3 import latest_value
 start_time = time.time()
 
 st.set_page_config(page_title="WTI Price", layout="wide")
+
+# =========================
+# Sidebar title
+# =========================
+st.sidebar.markdown(
+    """
+    <h1 style="font-size: 1.5rem; line-height: 1.2; margin-bottom: 0.2rem;">
+        U.S. Petroleum & WTI Weekly Monitor
+    </h1>
+    """,
+    unsafe_allow_html=True,
+)
+st.sidebar.caption("Source: EIA")
+st.sidebar.divider()
+
+# =========================
+# Main page header
+# =========================
 st.title("WTI Crude Oil Price")
 st.caption("Source: U.S. Energy Information Administration (EIA)")
 
 PROJECT_ID = "sipa-adv-c-giggling-wombat"
 TABLE_ID = f"{PROJECT_ID}.petroleum_supply.weekly_wti"
+
+MIN_INTERPRETATION_POINTS = 4
+PRICE_MOVE_THRESHOLD = 1
+RECENT_RANGE_WEEKS = 12
+HIGH_NEAR_THRESHOLD = 0.98
+LOW_NEAR_THRESHOLD = 1.02
+VOLATILITY_STD_THRESHOLD = 5
+TOP_HIGHLIGHT_YEARS = 5
+
+YEAR_BAR_DEFAULT_COLOR = "steelblue"
+YEAR_BAR_HIGHLIGHT_COLOR = "darkorange"
+
+DEFAULT_START_WEEK = pd.to_datetime("2012-08-10").date()
 
 
 @st.cache_resource
@@ -45,10 +76,7 @@ def load_wti_data() -> pd.DataFrame:
 
 
 def generate_wti_interpretation(df: pd.DataFrame, ma_window: int) -> str:
-    """
-    Generate a simple real-time interpretation for filtered WTI data.
-    """
-    if df.empty or len(df) < 4:  # noqa: PLR2004
+    if df.empty or len(df) < MIN_INTERPRETATION_POINTS:
         return "Not enough data to generate interpretation."
 
     df = df.sort_values("week").reset_index(drop=True)
@@ -60,19 +88,18 @@ def generate_wti_interpretation(df: pd.DataFrame, ma_window: int) -> str:
 
     recent_avg = df["wti_price"].tail(ma_window).mean()
 
-    recent_12w = df["wti_price"].tail(min(12, len(df)))
-    high_12w = recent_12w.max()
-    low_12w = recent_12w.min()
+    recent_window = df["wti_price"].tail(min(RECENT_RANGE_WEEKS, len(df)))
+    high_recent = recent_window.max()
+    low_recent = recent_window.min()
+    recent_std = recent_window.std()
 
-    recent_std = recent_12w.std()
-
-    if latest_change > 1:
+    if latest_change > PRICE_MOVE_THRESHOLD:
         trend_text = (
             f"WTI increased by ${latest_change:.2f} "
             f"({latest_pct_change:.2f}%) from the previous week, "
             "suggesting short-term upward momentum."
         )
-    elif latest_change < -1:
+    elif latest_change < -PRICE_MOVE_THRESHOLD:
         trend_text = (
             f"WTI decreased by ${abs(latest_change):.2f} "
             f"({abs(latest_pct_change):.2f}%) from the previous week, "
@@ -103,29 +130,41 @@ def generate_wti_interpretation(df: pd.DataFrame, ma_window: int) -> str:
             f"moving average (${recent_avg:.2f})."
         )
 
-    if latest_price >= high_12w * 0.98:
+    if latest_price >= high_recent * HIGH_NEAR_THRESHOLD:
         range_text = (
-            f"WTI is near its recent 12-week high (${high_12w:.2f}), "
-            "indicating that prices remain elevated relative to recent history."
+            f"WTI is near its recent {RECENT_RANGE_WEEKS}-week high "
+            f"(${high_recent:.2f}), indicating that prices remain elevated "
+            "relative to recent history."
         )
-    elif latest_price <= low_12w * 1.02:
+    elif latest_price <= low_recent * LOW_NEAR_THRESHOLD:
         range_text = (
-            f"WTI is near its recent 12-week low (${low_12w:.2f}), "
-            "suggesting relatively weak pricing compared with recent weeks."
+            f"WTI is near its recent {RECENT_RANGE_WEEKS}-week low "
+            f"(${low_recent:.2f}), suggesting relatively weak pricing "
+            "compared with recent weeks."
         )
     else:
         range_text = (
-            f"WTI remains within its recent 12-week range of "
-            f"${low_12w:.2f} to ${high_12w:.2f}, indicating a more moderate "
-            "position in the recent trend."
+            f"WTI remains within its recent {RECENT_RANGE_WEEKS}-week range "
+            f"of ${low_recent:.2f} to ${high_recent:.2f}, indicating a more "
+            "moderate position in the recent trend."
         )
 
-    if pd.notna(recent_std) and recent_std > 5:  # noqa: PLR2004
+    if pd.notna(recent_std) and recent_std > VOLATILITY_STD_THRESHOLD:
         vol_text = "Recent price movements have been relatively volatile."
     else:
         vol_text = "Recent price movements have been relatively stable."
 
     return f"{trend_text} {avg_text} {range_text} {vol_text}"
+
+
+def find_top_highest_years(yearly_avg: pd.DataFrame, top_n: int) -> set[int]:
+    if yearly_avg.empty:
+        return set()
+
+    top_years = (
+        yearly_avg.sort_values("avg_wti_price", ascending=False).head(top_n)["year"].tolist()
+    )
+    return set(top_years)
 
 
 try:
@@ -146,9 +185,11 @@ st.sidebar.header("Filters")
 min_week = weekly_wti["week"].min().date()
 max_week = weekly_wti["week"].max().date()
 
+default_start_week = DEFAULT_START_WEEK if min_week <= DEFAULT_START_WEEK <= max_week else min_week
+
 start_week = st.sidebar.date_input(
     "Start week",
-    value=min_week,
+    value=default_start_week,
     min_value=min_week,
     max_value=max_week,
     key="wti_start_week",
@@ -196,7 +237,6 @@ try:
 except Exception:
     latest_price = None
 
-latest_change = filtered_wti["weekly_change"].iloc[-1]
 avg_price = filtered_wti["wti_price"].mean()
 
 c1, c2, c3 = st.columns(3)
@@ -211,34 +251,41 @@ c3.metric(
 )
 
 st.divider()
-st.subheader("WTI Price Over Time (Weekly)")
 
-fig, ax = plt.subplots(figsize=(8, 4))
-ax.plot(filtered_wti["week"], filtered_wti["wti_price"], label="WTI price")
-ax.plot(
-    filtered_wti["week"],
-    filtered_wti["wti_ma"],
-    label=f"{ma_window}-week moving average",
-)
-ax.set_xlabel("Week")
-ax.set_ylabel("WTI price ($/barrel)")
-ax.legend()
-st.pyplot(fig)
+# =========================
+# Two charts side by side
+# =========================
+left_col, right_col = st.columns(2)
+
+with left_col:
+    st.subheader("WTI Price Over Time (Weekly)")
+
+    fig, ax = plt.subplots(figsize=(7, 4))
+    ax.plot(filtered_wti["week"], filtered_wti["wti_price"], label="WTI price")
+    ax.plot(
+        filtered_wti["week"],
+        filtered_wti["wti_ma"],
+        label=f"{ma_window}-week moving average",
+    )
+    ax.set_xlabel("Week")
+    ax.set_ylabel("WTI price ($/barrel)")
+    ax.legend()
+    st.pyplot(fig)
+
+with right_col:
+    st.subheader("Weekly Change in WTI Price")
+
+    fig2, ax2 = plt.subplots(figsize=(7, 4))
+    ax2.plot(filtered_wti["week"], filtered_wti["weekly_change"])
+    ax2.axhline(0, color="gray", linewidth=1)
+    ax2.set_xlabel("Week")
+    ax2.set_ylabel("Weekly change ($/barrel)")
+    st.pyplot(fig2)
 
 st.divider()
 st.subheader("Real-Time Interpretation")
 interpretation = generate_wti_interpretation(filtered_wti, ma_window)
 st.markdown(interpretation.replace("$", r"\$"))
-
-st.divider()
-st.subheader("Weekly Change in WTI Price")
-
-fig2, ax2 = plt.subplots(figsize=(8, 4))
-ax2.plot(filtered_wti["week"], filtered_wti["weekly_change"])
-ax2.axhline(0)
-ax2.set_xlabel("Week")
-ax2.set_ylabel("Weekly change ($/barrel)")
-st.pyplot(fig2)
 
 st.divider()
 st.subheader("Average WTI Price by Year")
@@ -247,13 +294,38 @@ yearly_avg = (
     filtered_wti.groupby("year", as_index=False)["wti_price"]
     .mean()
     .rename(columns={"wti_price": "avg_wti_price"})
+    .sort_values("year")
+    .reset_index(drop=True)
 )
 
-fig3, ax3 = plt.subplots(figsize=(8, 4))
-ax3.bar(yearly_avg["year"], yearly_avg["avg_wti_price"])
-ax3.set_xlabel("Year")
-ax3.set_ylabel("Average WTI price ($/barrel)")
+highlight_years = find_top_highest_years(yearly_avg, TOP_HIGHLIGHT_YEARS)
+
+bar_colors = [
+    YEAR_BAR_HIGHLIGHT_COLOR if year in highlight_years else YEAR_BAR_DEFAULT_COLOR
+    for year in yearly_avg["year"]
+]
+
+fig3, ax3 = plt.subplots(figsize=(8, 5))
+ax3.barh(
+    yearly_avg["year"].astype(str),
+    yearly_avg["avg_wti_price"],
+    color=bar_colors,
+)
+ax3.set_xlabel("Average WTI price ($/barrel)")
+ax3.set_ylabel("Year")
 st.pyplot(fig3)
+
+if highlight_years:
+    top_year_text = ", ".join(
+        str(year)
+        for year in yearly_avg.sort_values("avg_wti_price", ascending=False)
+        .head(TOP_HIGHLIGHT_YEARS)["year"]
+        .tolist()
+    )
+    st.caption(
+        f"Top {TOP_HIGHLIGHT_YEARS} highest average-price years highlighted in orange: "
+        f"{top_year_text}"
+    )
 
 with st.expander("Show data table"):
     st.dataframe(

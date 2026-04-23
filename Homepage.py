@@ -11,7 +11,18 @@ from tests.eia_part3 import latest_value
 start_time = time.time()
 
 st.set_page_config(page_title="Weekly U.S. Petroleum Supply", layout="wide")
-st.title("U.S. Petroleum & WTI Weekly Monitor")
+
+# =========================
+# Sidebar title
+# =========================
+st.sidebar.title("U.S. Petroleum & WTI Weekly Monitor")
+st.sidebar.caption("Source: EIA")
+st.sidebar.divider()
+
+# =========================
+# Main page header
+# =========================
+st.title("Weekly U.S. Petroleum Supply")
 st.subheader("Team Members: Irina, Indra")
 st.caption("Source: U.S. Energy Information Administration (EIA)")
 
@@ -79,7 +90,11 @@ st.divider()
 PROJECT_ID = "sipa-adv-c-giggling-wombat"
 TOTAL_SUPPLY_TABLE_ID = f"{PROJECT_ID}.petroleum_supply.weekly_supply"
 PRODUCT_SUPPLY_TABLE_ID = f"{PROJECT_ID}.petroleum_supply.weekly_supply_by_product"
+WTI_TABLE_ID = f"{PROJECT_ID}.petroleum_supply.weekly_wti"
+
 DEFAULT_PRODUCT_COUNT = 3
+MIN_CORRELATION_POINTS = 12
+TOP_ANALYSIS_COUNT = 10
 
 
 @st.cache_resource
@@ -123,6 +138,71 @@ def load_supply_product_data() -> pd.DataFrame:
     return df
 
 
+@st.cache_data(ttl=60 * 60)
+def load_wti_data() -> pd.DataFrame:
+    client = get_bq_client()
+    query = f"""
+        SELECT week, wti_price
+        FROM `{WTI_TABLE_ID}`
+        ORDER BY week
+    """
+    df = client.query(query).to_dataframe()
+    df["week"] = pd.to_datetime(df["week"])
+    df["wti_price"] = pd.to_numeric(df["wti_price"], errors="coerce")
+    df = df.dropna(subset=["week", "wti_price"])
+    return df
+
+
+def compute_product_price_sensitivity(
+    product_df: pd.DataFrame,
+    wti_df: pd.DataFrame,
+) -> pd.DataFrame:
+    merged = product_df.merge(wti_df, on="week", how="inner")
+
+    if merged.empty:
+        return pd.DataFrame()
+
+    results = []
+
+    grouped = merged.groupby(["product", "product_name"], dropna=False)
+
+    for (product_code, product_name), group in grouped:
+        group = group.dropna(subset=["product_supplied", "wti_price"]).copy()
+
+        if len(group) < MIN_CORRELATION_POINTS:
+            continue
+
+        if group["product_supplied"].nunique() < 2 or group["wti_price"].nunique() < 2:
+            continue
+
+        correlation = group["product_supplied"].corr(group["wti_price"])
+
+        if pd.isna(correlation):
+            continue
+
+        direction = "Positive" if correlation >= 0 else "Negative"
+
+        results.append(
+            {
+                "product": product_code,
+                "product_name": product_name,
+                "correlation_with_wti": correlation,
+                "abs_correlation": abs(correlation),
+                "direction": direction,
+                "weeks_used": len(group),
+            }
+        )
+
+    if not results:
+        return pd.DataFrame()
+
+    result_df = (
+        pd.DataFrame(results).sort_values("abs_correlation", ascending=False).reset_index(drop=True)
+    )
+
+    return result_df
+
+
 try:
     weekly_total = load_supply_data()
 except Exception as e:
@@ -133,9 +213,26 @@ if weekly_total.empty:
     st.error("No supply data found in BigQuery.")
     st.stop()
 
-# =========================
-# Interactive Filters
-# =========================
+try:
+    weekly_by_product = load_supply_product_data()
+except Exception as e:
+    st.error(f"Failed to load product-level supply data from BigQuery: {e}")
+    st.stop()
+
+try:
+    weekly_wti = load_wti_data()
+except Exception as e:
+    st.error(f"Failed to load WTI data from BigQuery: {e}")
+    st.stop()
+
+if weekly_by_product.empty:
+    st.error("No product-level supply data found in BigQuery.")
+    st.stop()
+
+if weekly_wti.empty:
+    st.error("No WTI data found in BigQuery.")
+    st.stop()
+
 st.sidebar.header("Filters")
 
 min_week = weekly_total["week"].min().date()
@@ -170,15 +267,14 @@ if filtered_total.empty:
     st.warning("No data available for the selected date range.")
     st.stop()
 
-try:
-    weekly_by_product = load_supply_product_data()
-except Exception as e:
-    st.error(f"Failed to load product-level supply data from BigQuery: {e}")
-    st.stop()
-
 filtered_product = weekly_by_product[
     (weekly_by_product["week"] >= pd.to_datetime(start_week))
     & (weekly_by_product["week"] <= pd.to_datetime(end_week))
+].copy()
+
+filtered_wti = weekly_wti[
+    (weekly_wti["week"] >= pd.to_datetime(start_week))
+    & (weekly_wti["week"] <= pd.to_datetime(end_week))
 ].copy()
 
 product_options = sorted(filtered_product["product_name"].dropna().unique().tolist())
@@ -210,49 +306,106 @@ c2.metric(
     f"{latest_total:,.0f}" if latest_total is not None else "—",
 )
 
-st.divider()
-st.subheader("Total Product Supplied (Weekly, All Products Summed)")
-
-fig, ax = plt.subplots(figsize=(8, 4))
-ax.plot(filtered_total["week"], filtered_total["total_supply"])
-ax.set_xlabel("Week")
-ax.set_ylabel("Total Product Supplied")
-st.pyplot(fig)
-
-with st.expander("Show total supply data table"):
-    st.dataframe(
-        filtered_total.sort_values("week", ascending=False),
-        use_container_width=True,
-    )
-
 st.caption(
     "Note: 'Product supplied' is often used as a proxy for consumption. "
-    "This visualization is descriptive (not causal)."
+    "This dashboard is descriptive rather than causal."
 )
 
 st.divider()
-st.subheader("Product-Level Weekly Supply")
 
-if not selected_products:
-    st.warning("Please select at least one product from the sidebar.")
-else:
-    product_plot_df = filtered_product[
-        filtered_product["product_name"].isin(selected_products)
-    ].copy()
+left_col, right_col = st.columns(2)
 
-    fig2, ax2 = plt.subplots(figsize=(8, 4))
-    for product_name in selected_products:
-        temp = product_plot_df[product_plot_df["product_name"] == product_name]
-        ax2.plot(temp["week"], temp["product_supplied"], label=product_name)
+with left_col:
+    st.subheader("Total Product Supplied")
 
-    ax2.set_xlabel("Week")
-    ax2.set_ylabel("Product Supplied")
-    ax2.legend()
-    st.pyplot(fig2)
+    fig, ax = plt.subplots(figsize=(7, 4))
+    ax.plot(filtered_total["week"], filtered_total["total_supply"])
+    ax.set_xlabel("Week")
+    ax.set_ylabel("Total Product Supplied")
+    st.pyplot(fig)
 
-    with st.expander("Show product-level data table"):
+    with st.expander("Show total supply data table"):
         st.dataframe(
-            product_plot_df.sort_values(["product_name", "week"], ascending=[True, False]),
+            filtered_total.sort_values("week", ascending=False),
+            use_container_width=True,
+        )
+
+with right_col:
+    st.subheader("Product-Level Weekly Supply")
+
+    if not selected_products:
+        st.warning("Please select at least one product from the sidebar.")
+    else:
+        product_plot_df = filtered_product[
+            filtered_product["product_name"].isin(selected_products)
+        ].copy()
+
+        fig2, ax2 = plt.subplots(figsize=(7, 4))
+        for product_name in selected_products:
+            temp = product_plot_df[product_plot_df["product_name"] == product_name]
+            ax2.plot(temp["week"], temp["product_supplied"], label=product_name)
+
+        ax2.set_xlabel("Week")
+        ax2.set_ylabel("Product Supplied")
+        ax2.legend()
+        st.pyplot(fig2)
+
+        with st.expander("Show product-level data table"):
+            st.dataframe(
+                product_plot_df.sort_values(["product_name", "week"], ascending=[True, False]),
+                use_container_width=True,
+            )
+
+st.divider()
+st.subheader("Product Sensitivity to WTI Price")
+
+sensitivity_df = compute_product_price_sensitivity(filtered_product, filtered_wti)
+
+if sensitivity_df.empty:
+    st.warning("Not enough overlapping weekly data to evaluate product sensitivity to WTI price.")
+else:
+    top_product = sensitivity_df.iloc[0]
+
+    m1, m2, m3 = st.columns(3)
+    m1.metric("Most price-sensitive product", top_product["product_name"])
+    m2.metric(
+        "Correlation with WTI",
+        f"{top_product['correlation_with_wti']:.2f}",
+    )
+    m3.metric("Weeks used", f"{int(top_product['weeks_used'])}")
+
+    st.caption(
+        "Products are ranked by the absolute correlation between weekly product "
+        "supplied and weekly WTI price over the selected date range. This is a "
+        "descriptive measure, not a causal estimate."
+    )
+
+    chart_df = sensitivity_df.head(TOP_ANALYSIS_COUNT).sort_values(
+        "abs_correlation", ascending=True
+    )
+
+    fig3, ax3 = plt.subplots(figsize=(6, 3.5))
+    ax3.barh(
+        chart_df["product_name"],
+        chart_df["abs_correlation"],
+        color="darkorange",
+    )
+    ax3.set_xlabel("Absolute correlation with WTI price")
+    ax3.set_ylabel("Product")
+    st.pyplot(fig3)
+
+    with st.expander("Show product sensitivity table"):
+        st.dataframe(
+            sensitivity_df[
+                [
+                    "product",
+                    "product_name",
+                    "correlation_with_wti",
+                    "abs_correlation",
+                    "direction",
+                    "weeks_used",
+                ]
+            ],
             use_container_width=True,
         )
 
