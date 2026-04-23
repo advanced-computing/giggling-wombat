@@ -13,13 +13,6 @@ start_time = time.time()
 st.set_page_config(page_title="Weekly U.S. Petroleum Supply", layout="wide")
 
 # =========================
-# Sidebar title
-# =========================
-st.sidebar.title("U.S. Petroleum & WTI Weekly Monitor")
-st.sidebar.caption("Source: EIA")
-st.sidebar.divider()
-
-# =========================
 # Main page header
 # =========================
 st.title("Weekly U.S. Petroleum Supply")
@@ -95,6 +88,7 @@ WTI_TABLE_ID = f"{PROJECT_ID}.petroleum_supply.weekly_wti"
 DEFAULT_PRODUCT_COUNT = 3
 MIN_CORRELATION_POINTS = 12
 TOP_ANALYSIS_COUNT = 10
+TWO_COLUMN_LAYOUT = 2
 
 
 @st.cache_resource
@@ -172,7 +166,10 @@ def compute_product_price_sensitivity(
         if len(group) < MIN_CORRELATION_POINTS:
             continue
 
-        if group["product_supplied"].nunique() < 2 or group["wti_price"].nunique() < 2:
+        if group["product_supplied"].nunique() < TWO_COLUMN_LAYOUT:
+            continue
+
+        if group["wti_price"].nunique() < TWO_COLUMN_LAYOUT:
             continue
 
         correlation = group["product_supplied"].corr(group["wti_price"])
@@ -203,6 +200,9 @@ def compute_product_price_sensitivity(
     return result_df
 
 
+# =========================
+# Load data
+# =========================
 try:
     weekly_total = load_supply_data()
 except Exception as e:
@@ -233,6 +233,9 @@ if weekly_wti.empty:
     st.error("No WTI data found in BigQuery.")
     st.stop()
 
+# =========================
+# Sidebar Filters
+# =========================
 st.sidebar.header("Filters")
 
 min_week = weekly_total["week"].min().date()
@@ -299,7 +302,7 @@ try:
 except Exception:
     latest_total = None
 
-c1, c2 = st.columns(2)
+c1, c2 = st.columns(TWO_COLUMN_LAYOUT)
 c1.metric("Weeks in selected range", f"{filtered_total.shape[0]:,}")
 c2.metric(
     "Latest total (sum of products)",
@@ -313,7 +316,10 @@ st.caption(
 
 st.divider()
 
-left_col, right_col = st.columns(2)
+# =========================
+# Two side-by-side charts
+# =========================
+left_col, right_col = st.columns(TWO_COLUMN_LAYOUT)
 
 with left_col:
     st.subheader("Total Product Supplied")
@@ -357,6 +363,10 @@ with right_col:
             )
 
 st.divider()
+
+# =========================
+# Product sensitivity section
+# =========================
 st.subheader("Product Sensitivity to WTI Price")
 
 sensitivity_df = compute_product_price_sensitivity(filtered_product, filtered_wti)
