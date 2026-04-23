@@ -13,6 +13,20 @@ start_time = time.time()
 st.set_page_config(page_title="Weekly U.S. Petroleum Supply", layout="wide")
 
 # =========================
+# Sidebar title
+# =========================
+st.sidebar.markdown(
+    """
+    <h1 style="font-size: 1.5rem; line-height: 1.2; margin-bottom: 0.2rem;">
+        U.S. Petroleum & WTI Weekly Monitor
+    </h1>
+    """,
+    unsafe_allow_html=True,
+)
+st.sidebar.caption("Source: EIA")
+st.sidebar.divider()
+
+# =========================
 # Main page header
 # =========================
 st.title("Weekly U.S. Petroleum Supply")
