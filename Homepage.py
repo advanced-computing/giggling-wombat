@@ -103,6 +103,7 @@ DEFAULT_PRODUCT_COUNT = 3
 MIN_CORRELATION_POINTS = 12
 TOP_ANALYSIS_COUNT = 10
 TWO_COLUMN_LAYOUT = 2
+THREE_COLUMN_LAYOUT = 3
 
 
 @st.cache_resource
@@ -124,7 +125,7 @@ def load_supply_data() -> pd.DataFrame:
         FROM `{TOTAL_SUPPLY_TABLE_ID}`
         ORDER BY week
     """
-    df = client.query(query).to_dataframe()
+    df = client.query(query).to_dataframe(create_bqstorage_client=False)
     df["week"] = pd.to_datetime(df["week"])
     df["total_supply"] = pd.to_numeric(df["total_supply"], errors="coerce")
     df = df.dropna(subset=["week", "total_supply"])
@@ -139,7 +140,7 @@ def load_supply_product_data() -> pd.DataFrame:
         FROM `{PRODUCT_SUPPLY_TABLE_ID}`
         ORDER BY week
     """
-    df = client.query(query).to_dataframe()
+    df = client.query(query).to_dataframe(create_bqstorage_client=False)
     df["week"] = pd.to_datetime(df["week"])
     df["product_supplied"] = pd.to_numeric(df["product_supplied"], errors="coerce")
     df = df.dropna(subset=["week", "product", "product_name", "product_supplied"])
@@ -154,7 +155,7 @@ def load_wti_data() -> pd.DataFrame:
         FROM `{WTI_TABLE_ID}`
         ORDER BY week
     """
-    df = client.query(query).to_dataframe()
+    df = client.query(query).to_dataframe(create_bqstorage_client=False)
     df["week"] = pd.to_datetime(df["week"])
     df["wti_price"] = pd.to_numeric(df["wti_price"], errors="coerce")
     df = df.dropna(subset=["week", "wti_price"])
@@ -345,10 +346,9 @@ with left_col:
     st.pyplot(fig)
 
     with st.expander("Show total supply data table"):
-        st.dataframe(
-            filtered_total.sort_values("week", ascending=False),
-            use_container_width=True,
-        )
+        total_display = filtered_total.sort_values("week", ascending=False).copy()
+        total_display["week"] = total_display["week"].dt.strftime("%Y-%m-%d")
+        st.dataframe(total_display, width="stretch")
 
 with right_col:
     st.subheader("Product-Level Weekly Supply")
@@ -371,10 +371,11 @@ with right_col:
         st.pyplot(fig2)
 
         with st.expander("Show product-level data table"):
-            st.dataframe(
-                product_plot_df.sort_values(["product_name", "week"], ascending=[True, False]),
-                use_container_width=True,
-            )
+            product_display = product_plot_df.sort_values(
+                ["product_name", "week"], ascending=[True, False]
+            ).copy()
+            product_display["week"] = product_display["week"].dt.strftime("%Y-%m-%d")
+            st.dataframe(product_display, width="stretch")
 
 st.divider()
 
@@ -390,7 +391,7 @@ if sensitivity_df.empty:
 else:
     top_product = sensitivity_df.iloc[0]
 
-    m1, m2, m3 = st.columns(3)
+    m1, m2, m3 = st.columns(THREE_COLUMN_LAYOUT)
     m1.metric("Most price-sensitive product", top_product["product_name"])
     m2.metric(
         "Correlation with WTI",
@@ -430,7 +431,7 @@ else:
                     "weeks_used",
                 ]
             ],
-            use_container_width=True,
+            width="stretch",
         )
 
 elapsed = time.time() - start_time

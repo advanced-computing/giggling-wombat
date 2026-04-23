@@ -42,6 +42,8 @@ HIGH_NEAR_THRESHOLD = 0.98
 LOW_NEAR_THRESHOLD = 1.02
 VOLATILITY_STD_THRESHOLD = 5
 TOP_HIGHLIGHT_YEARS = 5
+THREE_COLUMN_LAYOUT = 3
+TWO_COLUMN_LAYOUT = 2
 
 YEAR_BAR_DEFAULT_COLOR = "steelblue"
 YEAR_BAR_HIGHLIGHT_COLOR = "darkorange"
@@ -68,7 +70,7 @@ def load_wti_data() -> pd.DataFrame:
         FROM `{TABLE_ID}`
         ORDER BY week
     """
-    df = client.query(query).to_dataframe()
+    df = client.query(query).to_dataframe(create_bqstorage_client=False)
     df["week"] = pd.to_datetime(df["week"])
     df["wti_price"] = pd.to_numeric(df["wti_price"], errors="coerce")
     df = df.dropna(subset=["week", "wti_price"])
@@ -239,7 +241,7 @@ except Exception:
 
 avg_price = filtered_wti["wti_price"].mean()
 
-c1, c2, c3 = st.columns(3)
+c1, c2, c3 = st.columns(THREE_COLUMN_LAYOUT)
 c1.metric("Weeks in selected range", f"{filtered_wti.shape[0]:,}")
 c2.metric(
     "Latest WTI ($/barrel)",
@@ -255,7 +257,7 @@ st.divider()
 # =========================
 # Two charts side by side
 # =========================
-left_col, right_col = st.columns(2)
+left_col, right_col = st.columns(TWO_COLUMN_LAYOUT)
 
 with left_col:
     st.subheader("WTI Price Over Time (Weekly)")
@@ -328,10 +330,9 @@ if highlight_years:
     )
 
 with st.expander("Show data table"):
-    st.dataframe(
-        filtered_wti.sort_values("week", ascending=False),
-        use_container_width=True,
-    )
+    display_df = filtered_wti.sort_values("week", ascending=False).copy()
+    display_df["week"] = display_df["week"].dt.strftime("%Y-%m-%d")
+    st.dataframe(display_df, width="stretch")
 
 elapsed = time.time() - start_time
 st.caption(f"Page loaded in {elapsed:.2f} seconds")
