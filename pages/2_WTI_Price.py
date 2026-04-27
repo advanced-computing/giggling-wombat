@@ -264,16 +264,24 @@ with left_col:
     st.subheader("WTI Price Over Time (Weekly)")
 
     fig = go.Figure()
-    fig.add_trace(go.Scatter(
-        x=filtered_wti["week"], y=filtered_wti["wti_price"],
-        name="WTI Price", mode="lines",
-        hovertemplate="WTI Price: $%{y:.2f}<extra></extra>",
-    ))
-    fig.add_trace(go.Scatter(
-        x=filtered_wti["week"], y=filtered_wti["wti_ma"],
-        name=f"{ma_window}-Week Moving Average", mode="lines",
-        hovertemplate=f"{ma_window}-Week Avg: $%{{y:.2f}}<extra></extra>",
-    ))
+    fig.add_trace(
+        go.Scatter(
+            x=filtered_wti["week"],
+            y=filtered_wti["wti_price"],
+            name="WTI Price",
+            mode="lines",
+            hovertemplate="WTI Price: $%{y:.2f}<extra></extra>",
+        )
+    )
+    fig.add_trace(
+        go.Scatter(
+            x=filtered_wti["week"],
+            y=filtered_wti["wti_ma"],
+            name=f"{ma_window}-Week Moving Average",
+            mode="lines",
+            hovertemplate=f"{ma_window}-Week Avg: $%{{y:.2f}}<extra></extra>",
+        )
+    )
     fig.update_layout(
         xaxis_title="Week",
         yaxis_title="WTI Price ($/barrel)",
@@ -286,11 +294,15 @@ with right_col:
     st.subheader("Weekly Change in WTI Price")
 
     fig2 = go.Figure()
-    fig2.add_trace(go.Scatter(
-        x=filtered_wti["week"], y=filtered_wti["weekly_change"],
-        mode="lines", name="Weekly Change",
-        hovertemplate="<b>%{x|%b %d, %Y}</b><br>Change: $%{y:.2f}<extra></extra>",
-    ))
+    fig2.add_trace(
+        go.Scatter(
+            x=filtered_wti["week"],
+            y=filtered_wti["weekly_change"],
+            mode="lines",
+            name="Weekly Change",
+            hovertemplate="<b>%{x|%b %d, %Y}</b><br>Change: $%{y:.2f}<extra></extra>",
+        )
+    )
     fig2.add_hline(y=0, line_color="gray", line_width=1)
     fig2.update_layout(
         xaxis_title="Week",
@@ -334,9 +346,7 @@ fig3.update_layout(
     showlegend=False,
     hoverlabel=dict(namelength=-1),
 )
-fig3.update_traces(
-    hovertemplate="<b>%{y}</b><br>Avg WTI Price: $%{x:.2f}<extra></extra>"
-)
+fig3.update_traces(hovertemplate="<b>%{y}</b><br>Avg WTI Price: $%{x:.2f}<extra></extra>")
 st.plotly_chart(fig3, use_container_width=True)
 
 if highlight_years:

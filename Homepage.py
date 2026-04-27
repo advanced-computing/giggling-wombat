@@ -434,9 +434,7 @@ else:
         color_discrete_sequence=["darkorange"],
     )
     fig3.update_layout(showlegend=False)
-    fig3.update_traces(
-        hovertemplate="<b>%{y}</b><br>Correlation: %{x:.4f}<extra></extra>"
-    )
+    fig3.update_traces(hovertemplate="<b>%{y}</b><br>Correlation: %{x:.4f}<extra></extra>")
     st.plotly_chart(fig3, use_container_width=True)
 
     with st.expander("Show product sensitivity table"):

@@ -277,9 +277,7 @@ with left_col:
         labels={"week": "Week", "event_count": "Event Count"},
     )
     fig1.update_layout(hovermode="x unified")
-    fig1.update_traces(
-        hovertemplate="<b>%{x|%b %d, %Y}</b><br>Events: %{y:,.0f}<extra></extra>"
-    )
+    fig1.update_traces(hovertemplate="<b>%{x|%b %d, %Y}</b><br>Events: %{y:,.0f}<extra></extra>")
     st.plotly_chart(fig1, use_container_width=True)
 
     st.caption(
@@ -292,11 +290,15 @@ with right_col:
     st.subheader("Average Event Tone")
 
     fig2 = go.Figure()
-    fig2.add_trace(go.Scatter(
-        x=filtered["week"], y=filtered["avg_tone"],
-        mode="lines", name="Average Tone",
-        hovertemplate="<b>%{x|%b %d, %Y}</b><br>Avg Tone: %{y:.2f}<extra></extra>",
-    ))
+    fig2.add_trace(
+        go.Scatter(
+            x=filtered["week"],
+            y=filtered["avg_tone"],
+            mode="lines",
+            name="Average Tone",
+            hovertemplate="<b>%{x|%b %d, %Y}</b><br>Avg Tone: %{y:.2f}<extra></extra>",
+        )
+    )
     fig2.add_hline(y=0, line_color="gray", line_width=1)
     fig2.update_layout(
         xaxis_title="Week",
@@ -315,26 +317,46 @@ st.divider()
 st.subheader("Weekly Event Composition")
 
 fig3 = go.Figure()
-fig3.add_trace(go.Scatter(
-    x=filtered["week"], y=filtered["verbal_cooperation_count"],
-    name="Verbal Cooperation", stackgroup="one", mode="lines",
-    hovertemplate="Verbal Cooperation: %{y:,.0f}<extra></extra>",
-))
-fig3.add_trace(go.Scatter(
-    x=filtered["week"], y=filtered["material_cooperation_count"],
-    name="Material Cooperation", stackgroup="one", mode="lines",
-    hovertemplate="Material Cooperation: %{y:,.0f}<extra></extra>",
-))
-fig3.add_trace(go.Scatter(
-    x=filtered["week"], y=filtered["verbal_conflict_count"],
-    name="Verbal Conflict", stackgroup="one", mode="lines",
-    hovertemplate="Verbal Conflict: %{y:,.0f}<extra></extra>",
-))
-fig3.add_trace(go.Scatter(
-    x=filtered["week"], y=filtered["material_conflict_count"],
-    name="Material Conflict", stackgroup="one", mode="lines",
-    hovertemplate="Material Conflict: %{y:,.0f}<extra></extra>",
-))
+fig3.add_trace(
+    go.Scatter(
+        x=filtered["week"],
+        y=filtered["verbal_cooperation_count"],
+        name="Verbal Cooperation",
+        stackgroup="one",
+        mode="lines",
+        hovertemplate="Verbal Cooperation: %{y:,.0f}<extra></extra>",
+    )
+)
+fig3.add_trace(
+    go.Scatter(
+        x=filtered["week"],
+        y=filtered["material_cooperation_count"],
+        name="Material Cooperation",
+        stackgroup="one",
+        mode="lines",
+        hovertemplate="Material Cooperation: %{y:,.0f}<extra></extra>",
+    )
+)
+fig3.add_trace(
+    go.Scatter(
+        x=filtered["week"],
+        y=filtered["verbal_conflict_count"],
+        name="Verbal Conflict",
+        stackgroup="one",
+        mode="lines",
+        hovertemplate="Verbal Conflict: %{y:,.0f}<extra></extra>",
+    )
+)
+fig3.add_trace(
+    go.Scatter(
+        x=filtered["week"],
+        y=filtered["material_conflict_count"],
+        name="Material Conflict",
+        stackgroup="one",
+        mode="lines",
+        hovertemplate="Material Conflict: %{y:,.0f}<extra></extra>",
+    )
+)
 fig3.update_layout(
     xaxis_title="Week",
     yaxis_title="Event Count",
@@ -385,9 +407,7 @@ else:
         },
         color_discrete_sequence=[ANOMALY_BAR_COLOR],
     )
-    fig4.update_traces(
-        hovertemplate="<b>Week: %{y}</b><br>Shock Score: %{x:.2f}<extra></extra>"
-    )
+    fig4.update_traces(hovertemplate="<b>Week: %{y}</b><br>Shock Score: %{x:.2f}<extra></extra>")
     st.plotly_chart(fig4, use_container_width=True)
 
     st.caption(
