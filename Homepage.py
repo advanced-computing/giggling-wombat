@@ -1,7 +1,8 @@
 import time
 
-import matplotlib.pyplot as plt
 import pandas as pd
+import plotly.express as px
+import plotly.graph_objects as go
 import streamlit as st
 from google.cloud import bigquery
 from google.oauth2 import service_account
@@ -339,11 +340,17 @@ left_col, right_col = st.columns(TWO_COLUMN_LAYOUT)
 with left_col:
     st.subheader("Total Product Supplied")
 
-    fig, ax = plt.subplots(figsize=(7, 4))
-    ax.plot(filtered_total["week"], filtered_total["total_supply"])
-    ax.set_xlabel("Week")
-    ax.set_ylabel("Total Product Supplied")
-    st.pyplot(fig)
+    fig = px.line(
+        filtered_total,
+        x="week",
+        y="total_supply",
+        labels={"week": "Week", "total_supply": "Total Product Supplied"},
+    )
+    fig.update_layout(hovermode="x unified")
+    fig.update_traces(
+        hovertemplate="<b>%{x|%b %d, %Y}</b><br>Total Supply: %{y:,.0f}<extra></extra>"
+    )
+    st.plotly_chart(fig, use_container_width=True)
 
     with st.expander("Show total supply data table"):
         total_display = filtered_total.sort_values("week", ascending=False).copy()
@@ -360,15 +367,22 @@ with right_col:
             filtered_product["product_name"].isin(selected_products)
         ].copy()
 
-        fig2, ax2 = plt.subplots(figsize=(7, 4))
-        for product_name in selected_products:
-            temp = product_plot_df[product_plot_df["product_name"] == product_name]
-            ax2.plot(temp["week"], temp["product_supplied"], label=product_name)
-
-        ax2.set_xlabel("Week")
-        ax2.set_ylabel("Product Supplied")
-        ax2.legend()
-        st.pyplot(fig2)
+        fig2 = px.line(
+            product_plot_df,
+            x="week",
+            y="product_supplied",
+            color="product_name",
+            labels={
+                "week": "Week",
+                "product_supplied": "Product Supplied",
+                "product_name": "Product",
+            },
+        )
+        fig2.update_layout(hovermode="x unified")
+        fig2.update_traces(
+            hovertemplate="<b>%{fullData.name}</b><br>%{x|%b %d, %Y}: %{y:,.0f}<extra></extra>"
+        )
+        st.plotly_chart(fig2, use_container_width=True)
 
         with st.expander("Show product-level data table"):
             product_display = product_plot_df.sort_values(
@@ -409,15 +423,22 @@ else:
         "abs_correlation", ascending=True
     )
 
-    fig3, ax3 = plt.subplots(figsize=(6, 3.5))
-    ax3.barh(
-        chart_df["product_name"],
-        chart_df["abs_correlation"],
-        color="darkorange",
+    fig3 = px.bar(
+        chart_df,
+        x="abs_correlation",
+        y="product_name",
+        orientation="h",
+        labels={
+            "abs_correlation": "Absolute correlation with WTI price",
+            "product_name": "Product",
+        },
+        color_discrete_sequence=["darkorange"],
     )
-    ax3.set_xlabel("Absolute correlation with WTI price")
-    ax3.set_ylabel("Product")
-    st.pyplot(fig3)
+    fig3.update_layout(showlegend=False)
+    fig3.update_traces(
+        hovertemplate="<b>%{y}</b><br>Correlation: %{x:.4f}<extra></extra>"
+    )
+    st.plotly_chart(fig3, use_container_width=True)
 
     with st.expander("Show product sensitivity table"):
         st.dataframe(

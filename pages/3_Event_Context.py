@@ -1,7 +1,8 @@
 import time
 
-import matplotlib.pyplot as plt
 import pandas as pd
+import plotly.express as px
+import plotly.graph_objects as go
 import streamlit as st
 from google.cloud import bigquery
 from google.oauth2 import service_account
@@ -269,11 +270,17 @@ left_col, right_col = st.columns(TWO_COLUMN_LAYOUT)
 with left_col:
     st.subheader("Weekly Event Count")
 
-    fig1, ax1 = plt.subplots(figsize=(7, 4))
-    ax1.plot(filtered["week"], filtered["event_count"])
-    ax1.set_xlabel("Week")
-    ax1.set_ylabel("Event count")
-    st.pyplot(fig1)
+    fig1 = px.line(
+        filtered,
+        x="week",
+        y="event_count",
+        labels={"week": "Week", "event_count": "Event Count"},
+    )
+    fig1.update_layout(hovermode="x unified")
+    fig1.update_traces(
+        hovertemplate="<b>%{x|%b %d, %Y}</b><br>Events: %{y:,.0f}<extra></extra>"
+    )
+    st.plotly_chart(fig1, use_container_width=True)
 
     st.caption(
         "This chart shows how many GDELT-recorded events occurred each week. "
@@ -284,12 +291,19 @@ with left_col:
 with right_col:
     st.subheader("Average Event Tone")
 
-    fig2, ax2 = plt.subplots(figsize=(7, 4))
-    ax2.plot(filtered["week"], filtered["avg_tone"])
-    ax2.axhline(0, color="gray", linewidth=1)
-    ax2.set_xlabel("Week")
-    ax2.set_ylabel("Average tone")
-    st.pyplot(fig2)
+    fig2 = go.Figure()
+    fig2.add_trace(go.Scatter(
+        x=filtered["week"], y=filtered["avg_tone"],
+        mode="lines", name="Average Tone",
+        hovertemplate="<b>%{x|%b %d, %Y}</b><br>Avg Tone: %{y:.2f}<extra></extra>",
+    ))
+    fig2.add_hline(y=0, line_color="gray", line_width=1)
+    fig2.update_layout(
+        xaxis_title="Week",
+        yaxis_title="Average Tone",
+        hovermode="x unified",
+    )
+    st.plotly_chart(fig2, use_container_width=True)
 
     st.caption(
         "This chart tracks the average tone of events in each week. "
@@ -300,24 +314,33 @@ with right_col:
 st.divider()
 st.subheader("Weekly Event Composition")
 
-fig3, ax3 = plt.subplots(figsize=(10, 4.5))
-ax3.stackplot(
-    filtered["week"],
-    filtered["verbal_cooperation_count"],
-    filtered["material_cooperation_count"],
-    filtered["verbal_conflict_count"],
-    filtered["material_conflict_count"],
-    labels=[
-        "Verbal cooperation",
-        "Material cooperation",
-        "Verbal conflict",
-        "Material conflict",
-    ],
+fig3 = go.Figure()
+fig3.add_trace(go.Scatter(
+    x=filtered["week"], y=filtered["verbal_cooperation_count"],
+    name="Verbal Cooperation", stackgroup="one", mode="lines",
+    hovertemplate="Verbal Cooperation: %{y:,.0f}<extra></extra>",
+))
+fig3.add_trace(go.Scatter(
+    x=filtered["week"], y=filtered["material_cooperation_count"],
+    name="Material Cooperation", stackgroup="one", mode="lines",
+    hovertemplate="Material Cooperation: %{y:,.0f}<extra></extra>",
+))
+fig3.add_trace(go.Scatter(
+    x=filtered["week"], y=filtered["verbal_conflict_count"],
+    name="Verbal Conflict", stackgroup="one", mode="lines",
+    hovertemplate="Verbal Conflict: %{y:,.0f}<extra></extra>",
+))
+fig3.add_trace(go.Scatter(
+    x=filtered["week"], y=filtered["material_conflict_count"],
+    name="Material Conflict", stackgroup="one", mode="lines",
+    hovertemplate="Material Conflict: %{y:,.0f}<extra></extra>",
+))
+fig3.update_layout(
+    xaxis_title="Week",
+    yaxis_title="Event Count",
+    hovermode="x unified",
 )
-ax3.set_xlabel("Week")
-ax3.set_ylabel("Event count")
-ax3.legend(loc="upper left")
-st.pyplot(fig3)
+st.plotly_chart(fig3, use_container_width=True)
 
 st.caption(
     "This stacked chart breaks weekly events into the four broad GDELT classes. "
@@ -351,15 +374,21 @@ else:
     chart_df["week_label"] = chart_df["week"].dt.strftime("%Y-%m-%d")
     chart_df = chart_df.sort_values("combined_shock_score", ascending=True)
 
-    fig4, ax4 = plt.subplots(figsize=(5, 3))
-    ax4.barh(
-        chart_df["week_label"],
-        chart_df["combined_shock_score"],
-        color=ANOMALY_BAR_COLOR,
+    fig4 = px.bar(
+        chart_df,
+        x="combined_shock_score",
+        y="week_label",
+        orientation="h",
+        labels={
+            "combined_shock_score": "Combined Shock Score",
+            "week_label": "Week",
+        },
+        color_discrete_sequence=[ANOMALY_BAR_COLOR],
     )
-    ax4.set_xlabel("Combined shock score")
-    ax4.set_ylabel("Week")
-    st.pyplot(fig4)
+    fig4.update_traces(
+        hovertemplate="<b>Week: %{y}</b><br>Shock Score: %{x:.2f}<extra></extra>"
+    )
+    st.plotly_chart(fig4, use_container_width=True)
 
     st.caption(
         "This chart visualizes the anomaly ranking used to build the table below. "
