@@ -55,6 +55,9 @@ with st.expander("Project Proposal", expanded=False):
 
         - **Weekly WTI Crude Oil Spot Price (RWTC)**
           https://www.eia.gov/opendata/browser/petroleum/pri/spt
+
+        - **GDELT 2.0 Global Event Data**
+      https://blog.gdeltproject.org/gdelt-2-0-our-global-world-in-realtime/
         """
     )
 
