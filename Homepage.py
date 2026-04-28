@@ -2,6 +2,7 @@ import time
 
 import pandas as pd
 import plotly.express as px
+import plotly.graph_objects as go
 import streamlit as st
 from google.cloud import bigquery
 from google.oauth2 import service_account
@@ -23,6 +24,13 @@ st.markdown(
     }
     [data-testid="stSidebar"] * {
         color: white !important;
+    }
+    [data-testid="stSidebar"] input {
+        color: #1A1A1A !important;
+    }
+    [data-testid="stSidebar"] .stDateInput input {
+        color: #1A1A1A !important;
+        background-color: #E4EBF4 !important;
     }
     [data-testid="stSidebarNav"] a {
         color: rgba(255,255,255,0.8) !important;

@@ -25,6 +25,13 @@ st.markdown(
     [data-testid="stSidebar"] * {
         color: white !important;
     }
+    [data-testid="stSidebar"] input {
+        color: #1A1A1A !important;
+    }
+    [data-testid="stSidebar"] .stDateInput input {
+        color: #1A1A1A !important;
+        background-color: #E4EBF4 !important;
+    }
     [data-testid="stSidebarNav"] a {
         color: rgba(255,255,255,0.8) !important;
     }
