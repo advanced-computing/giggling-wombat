@@ -1,7 +1,8 @@
 import time
 
-import matplotlib.pyplot as plt
 import pandas as pd
+import plotly.express as px
+import plotly.graph_objects as go
 import streamlit as st
 from google.cloud import bigquery
 from google.oauth2 import service_account
@@ -13,18 +14,44 @@ start_time = time.time()
 st.set_page_config(page_title="WTI Price", layout="wide")
 
 # =========================
-# Sidebar title
+# Sidebar title (above nav via CSS)
 # =========================
-st.sidebar.markdown(
+st.markdown(
     """
-    <h1 style="font-size: 1.5rem; line-height: 1.2; margin-bottom: 0.2rem;">
-        U.S. Petroleum & WTI Weekly Monitor
-    </h1>
+    <style>
+    [data-testid="stSidebar"] {
+        background-color: #0D2B5E !important;
+    }
+    [data-testid="stSidebar"] * {
+        color: white !important;
+    }
+    [data-testid="stSidebarNav"] a {
+        color: rgba(255,255,255,0.8) !important;
+    }
+    [data-testid="stSidebarNav"] a:hover {
+        color: white !important;
+        background-color: rgba(255,255,255,0.1) !important;
+    }
+    [data-testid="stSidebarNav"] {
+        padding-top: 3.5rem;
+    }
+    [data-testid="stSidebarNav"]::before {
+        content: "U.S. Petroleum & WTI Weekly Monitor";
+        display: block;
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        padding: 1rem 1.2rem 0.2rem 1.2rem;
+        font-size: 1.05rem;
+        font-weight: 600;
+        line-height: 1.3;
+        color: white !important;
+    }
+    </style>
     """,
     unsafe_allow_html=True,
 )
-st.sidebar.caption("Source: EIA")
-st.sidebar.divider()
 
 # =========================
 # Main page header
@@ -255,34 +282,66 @@ c3.metric(
 st.divider()
 
 # =========================
-# Two charts side by side
+# Stacked charts
 # =========================
-left_col, right_col = st.columns(TWO_COLUMN_LAYOUT)
+st.subheader("WTI Price Over Time (Weekly)")
 
-with left_col:
-    st.subheader("WTI Price Over Time (Weekly)")
-
-    fig, ax = plt.subplots(figsize=(7, 4))
-    ax.plot(filtered_wti["week"], filtered_wti["wti_price"], label="WTI price")
-    ax.plot(
-        filtered_wti["week"],
-        filtered_wti["wti_ma"],
-        label=f"{ma_window}-week moving average",
+fig = go.Figure()
+fig.add_trace(
+    go.Scatter(
+        x=filtered_wti["week"],
+        y=filtered_wti["wti_price"],
+        name="WTI Price",
+        mode="lines",
+        hovertemplate="WTI Price: $%{y:.2f}<extra></extra>",
     )
-    ax.set_xlabel("Week")
-    ax.set_ylabel("WTI price ($/barrel)")
-    ax.legend()
-    st.pyplot(fig)
+)
+fig.add_trace(
+    go.Scatter(
+        x=filtered_wti["week"],
+        y=filtered_wti["wti_ma"],
+        name=f"{ma_window}-Week Moving Average",
+        mode="lines",
+        hovertemplate=f"{ma_window}-Week Avg: $%{{y:.2f}}<extra></extra>",
+    )
+)
+fig.update_layout(
+    xaxis_title="Week",
+    yaxis_title="WTI Price ($/barrel)",
+    hovermode="x unified",
+    hoverlabel=dict(namelength=-1),
+    xaxis=dict(gridcolor="rgba(13,43,94,0.2)", linecolor="#0D2B5E"),
+    yaxis=dict(gridcolor="rgba(13,43,94,0.2)", linecolor="#0D2B5E"),
+    plot_bgcolor="rgba(0,0,0,0)",
+    paper_bgcolor="rgba(0,0,0,0)",
+)
+st.plotly_chart(fig, use_container_width=True)
 
-with right_col:
-    st.subheader("Weekly Change in WTI Price")
+st.divider()
 
-    fig2, ax2 = plt.subplots(figsize=(7, 4))
-    ax2.plot(filtered_wti["week"], filtered_wti["weekly_change"])
-    ax2.axhline(0, color="gray", linewidth=1)
-    ax2.set_xlabel("Week")
-    ax2.set_ylabel("Weekly change ($/barrel)")
-    st.pyplot(fig2)
+st.subheader("Weekly Change in WTI Price")
+
+fig2 = go.Figure()
+fig2.add_trace(
+    go.Scatter(
+        x=filtered_wti["week"],
+        y=filtered_wti["weekly_change"],
+        mode="lines",
+        name="Weekly Change",
+        hovertemplate="<b>%{x|%b %d, %Y}</b><br>Change: $%{y:.2f}<extra></extra>",
+    )
+)
+fig2.add_hline(y=0, line_color="#0D2B5E", line_width=1.5)
+fig2.update_layout(
+    xaxis_title="Week",
+    yaxis_title="Weekly Change ($/barrel)",
+    hovermode="x unified",
+    xaxis=dict(gridcolor="rgba(13,43,94,0.2)", linecolor="#0D2B5E"),
+    yaxis=dict(gridcolor="rgba(13,43,94,0.2)", linecolor="#0D2B5E"),
+    plot_bgcolor="rgba(0,0,0,0)",
+    paper_bgcolor="rgba(0,0,0,0)",
+)
+st.plotly_chart(fig2, use_container_width=True)
 
 st.divider()
 st.subheader("Real-Time Interpretation")
@@ -302,20 +361,25 @@ yearly_avg = (
 
 highlight_years = find_top_highest_years(yearly_avg, TOP_HIGHLIGHT_YEARS)
 
-bar_colors = [
-    YEAR_BAR_HIGHLIGHT_COLOR if year in highlight_years else YEAR_BAR_DEFAULT_COLOR
-    for year in yearly_avg["year"]
-]
-
-fig3, ax3 = plt.subplots(figsize=(8, 5))
-ax3.barh(
-    yearly_avg["year"].astype(str),
-    yearly_avg["avg_wti_price"],
-    color=bar_colors,
+yearly_avg["color"] = yearly_avg["year"].apply(
+    lambda y: "Top 5" if y in highlight_years else "Other"
 )
-ax3.set_xlabel("Average WTI price ($/barrel)")
-ax3.set_ylabel("Year")
-st.pyplot(fig3)
+
+fig3 = px.bar(
+    yearly_avg,
+    x="avg_wti_price",
+    y=yearly_avg["year"].astype(str),
+    orientation="h",
+    color="color",
+    color_discrete_map={"Top 5": "darkorange", "Other": "steelblue"},
+    labels={"avg_wti_price": "Average WTI Price ($/barrel)", "y": "Year"},
+)
+fig3.update_layout(
+    showlegend=False,
+    hoverlabel=dict(namelength=-1),
+)
+fig3.update_traces(hovertemplate="<b>%{y}</b><br>Avg WTI Price: $%{x:.2f}<extra></extra>")
+st.plotly_chart(fig3, use_container_width=True)
 
 if highlight_years:
     top_year_text = ", ".join(

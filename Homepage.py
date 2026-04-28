@@ -1,7 +1,8 @@
 import time
 
-import matplotlib.pyplot as plt
 import pandas as pd
+import plotly.express as px
+import plotly.graph_objects as go
 import streamlit as st
 from google.cloud import bigquery
 from google.oauth2 import service_account
@@ -13,25 +14,50 @@ start_time = time.time()
 st.set_page_config(page_title="Weekly U.S. Petroleum Supply", layout="wide")
 
 # =========================
-# Sidebar title
+# Sidebar title (above nav via CSS)
 # =========================
-st.sidebar.markdown(
+st.markdown(
     """
-    <h1 style="font-size: 1.5rem; line-height: 1.2; margin-bottom: 0.2rem;">
-        U.S. Petroleum & WTI Weekly Monitor
-    </h1>
+    <style>
+    [data-testid="stSidebar"] {
+        background-color: #0D2B5E !important;
+    }
+    [data-testid="stSidebar"] * {
+        color: white !important;
+    }
+    [data-testid="stSidebarNav"] a {
+        color: rgba(255,255,255,0.8) !important;
+    }
+    [data-testid="stSidebarNav"] a:hover {
+        color: white !important;
+        background-color: rgba(255,255,255,0.1) !important;
+    }
+    [data-testid="stSidebarNav"] {
+        padding-top: 3.5rem;
+    }
+    [data-testid="stSidebarNav"]::before {
+        content: "U.S. Petroleum & WTI Weekly Monitor";
+        display: block;
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        padding: 1rem 1.2rem 0.2rem 1.2rem;
+        font-size: 1.05rem;
+        font-weight: 600;
+        line-height: 1.3;
+        color: white !important;
+    }
+    </style>
     """,
     unsafe_allow_html=True,
 )
-st.sidebar.caption("Source: EIA")
-st.sidebar.divider()
 
 # =========================
 # Main page header
 # =========================
 st.title("Weekly U.S. Petroleum Supply")
-st.subheader("Team Members: Irina, Indra")
-st.caption("Source: U.S. Energy Information Administration (EIA)")
+st.caption("Team Members: Irina, Indra · Source: U.S. Energy Information Administration (EIA)")
 
 # =========================
 # Project Proposal
@@ -332,50 +358,71 @@ st.caption(
 st.divider()
 
 # =========================
-# Two side-by-side charts
+# Stacked charts
 # =========================
-left_col, right_col = st.columns(TWO_COLUMN_LAYOUT)
+st.subheader("Total Product Supplied")
 
-with left_col:
-    st.subheader("Total Product Supplied")
+fig = px.line(
+    filtered_total,
+    x="week",
+    y="total_supply",
+    labels={"week": "Week", "total_supply": "Total Product Supplied"},
+)
+fig.update_layout(
+    hovermode="x unified",
+    xaxis=dict(gridcolor="rgba(13,43,94,0.2)", linecolor="#0D2B5E"),
+    yaxis=dict(gridcolor="rgba(13,43,94,0.2)", linecolor="#0D2B5E"),
+    plot_bgcolor="rgba(0,0,0,0)",
+    paper_bgcolor="rgba(0,0,0,0)",
+)
+fig.update_traces(hovertemplate="<b>%{x|%b %d, %Y}</b><br>Total Supply: %{y:,.0f}<extra></extra>")
+st.plotly_chart(fig, use_container_width=True)
 
-    fig, ax = plt.subplots(figsize=(7, 4))
-    ax.plot(filtered_total["week"], filtered_total["total_supply"])
-    ax.set_xlabel("Week")
-    ax.set_ylabel("Total Product Supplied")
-    st.pyplot(fig)
+with st.expander("Show total supply data table"):
+    total_display = filtered_total.sort_values("week", ascending=False).copy()
+    total_display["week"] = total_display["week"].dt.strftime("%Y-%m-%d")
+    st.dataframe(total_display, width="stretch")
 
-    with st.expander("Show total supply data table"):
-        total_display = filtered_total.sort_values("week", ascending=False).copy()
-        total_display["week"] = total_display["week"].dt.strftime("%Y-%m-%d")
-        st.dataframe(total_display, width="stretch")
+st.divider()
 
-with right_col:
-    st.subheader("Product-Level Weekly Supply")
+st.subheader("Product-Level Weekly Supply")
 
-    if not selected_products:
-        st.warning("Please select at least one product from the sidebar.")
-    else:
-        product_plot_df = filtered_product[
-            filtered_product["product_name"].isin(selected_products)
-        ].copy()
+if not selected_products:
+    st.warning("Please select at least one product from the sidebar.")
+else:
+    product_plot_df = filtered_product[
+        filtered_product["product_name"].isin(selected_products)
+    ].copy()
 
-        fig2, ax2 = plt.subplots(figsize=(7, 4))
-        for product_name in selected_products:
-            temp = product_plot_df[product_plot_df["product_name"] == product_name]
-            ax2.plot(temp["week"], temp["product_supplied"], label=product_name)
+    fig2 = px.line(
+        product_plot_df,
+        x="week",
+        y="product_supplied",
+        color="product_name",
+        labels={
+            "week": "Week",
+            "product_supplied": "Product Supplied",
+            "product_name": "Product",
+        },
+    )
+    fig2.update_layout(
+        hovermode="x unified",
+        xaxis=dict(gridcolor="rgba(13,43,94,0.2)", linecolor="#0D2B5E"),
+        yaxis=dict(gridcolor="rgba(13,43,94,0.2)", linecolor="#0D2B5E"),
+        plot_bgcolor="rgba(0,0,0,0)",
+        paper_bgcolor="rgba(0,0,0,0)",
+    )
+    fig2.update_traces(
+        hovertemplate="<b>%{fullData.name}</b><br>%{x|%b %d, %Y}: %{y:,.0f}<extra></extra>"
+    )
+    st.plotly_chart(fig2, use_container_width=True)
 
-        ax2.set_xlabel("Week")
-        ax2.set_ylabel("Product Supplied")
-        ax2.legend()
-        st.pyplot(fig2)
-
-        with st.expander("Show product-level data table"):
-            product_display = product_plot_df.sort_values(
-                ["product_name", "week"], ascending=[True, False]
-            ).copy()
-            product_display["week"] = product_display["week"].dt.strftime("%Y-%m-%d")
-            st.dataframe(product_display, width="stretch")
+    with st.expander("Show product-level data table"):
+        product_display = product_plot_df.sort_values(
+            ["product_name", "week"], ascending=[True, False]
+        ).copy()
+        product_display["week"] = product_display["week"].dt.strftime("%Y-%m-%d")
+        st.dataframe(product_display, width="stretch")
 
 st.divider()
 
@@ -409,15 +456,20 @@ else:
         "abs_correlation", ascending=True
     )
 
-    fig3, ax3 = plt.subplots(figsize=(6, 3.5))
-    ax3.barh(
-        chart_df["product_name"],
-        chart_df["abs_correlation"],
-        color="darkorange",
+    fig3 = px.bar(
+        chart_df,
+        x="abs_correlation",
+        y="product_name",
+        orientation="h",
+        labels={
+            "abs_correlation": "Absolute correlation with WTI price",
+            "product_name": "Product",
+        },
+        color_discrete_sequence=["darkorange"],
     )
-    ax3.set_xlabel("Absolute correlation with WTI price")
-    ax3.set_ylabel("Product")
-    st.pyplot(fig3)
+    fig3.update_layout(showlegend=False)
+    fig3.update_traces(hovertemplate="<b>%{y}</b><br>Correlation: %{x:.4f}<extra></extra>")
+    st.plotly_chart(fig3, use_container_width=True)
 
     with st.expander("Show product sensitivity table"):
         st.dataframe(
