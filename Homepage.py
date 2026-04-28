@@ -13,25 +13,57 @@ start_time = time.time()
 st.set_page_config(page_title="Weekly U.S. Petroleum Supply", layout="wide")
 
 # =========================
-# Sidebar title
+# Sidebar title (above nav via CSS)
 # =========================
-st.sidebar.markdown(
+st.markdown(
     """
-    <h1 style="font-size: 1.5rem; line-height: 1.2; margin-bottom: 0.2rem;">
-        U.S. Petroleum & WTI Weekly Monitor
-    </h1>
+    <style>
+    [data-testid="stSidebar"] {
+        background-color: #0D2B5E !important;
+    }
+    [data-testid="stSidebar"] * {
+        color: white !important;
+    }
+    [data-testid="stSidebar"] input {
+        color: #1A1A1A !important;
+    }
+    [data-testid="stSidebar"] .stDateInput input {
+        color: #1A1A1A !important;
+        background-color: #E4EBF4 !important;
+    }
+    [data-testid="stSidebarNav"] a {
+        color: rgba(255,255,255,0.8) !important;
+    }
+    [data-testid="stSidebarNav"] a:hover {
+        color: white !important;
+        background-color: rgba(255,255,255,0.1) !important;
+    }
+    [data-testid="stSidebarNav"] {
+        padding-top: 3.5rem;
+    }
+    [data-testid="stSidebarNav"]::before {
+        content: "U.S. Petroleum & WTI Weekly Monitor";
+        display: block;
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        padding: 1rem 1.2rem 0.2rem 1.2rem;
+        font-size: 1.05rem;
+        font-weight: 600;
+        line-height: 1.3;
+        color: white !important;
+    }
+    </style>
     """,
     unsafe_allow_html=True,
 )
-st.sidebar.caption("Source: EIA")
-st.sidebar.divider()
 
 # =========================
 # Main page header
 # =========================
 st.title("Weekly U.S. Petroleum Supply")
-st.subheader("Team Members: Irina, Indra")
-st.caption("Source: U.S. Energy Information Administration (EIA)")
+st.caption("Team Members: Irina, Indra · Source: U.S. Energy Information Administration (EIA)")
 
 # =========================
 # Project Proposal
@@ -332,63 +364,71 @@ st.caption(
 st.divider()
 
 # =========================
-# Two side-by-side charts
+# Stacked charts
 # =========================
-left_col, right_col = st.columns(TWO_COLUMN_LAYOUT)
+st.subheader("Total Product Supplied")
 
-with left_col:
-    st.subheader("Total Product Supplied")
+fig = px.line(
+    filtered_total,
+    x="week",
+    y="total_supply",
+    labels={"week": "Week", "total_supply": "Total Product Supplied"},
+)
+fig.update_layout(
+    hovermode="x unified",
+    xaxis=dict(gridcolor="rgba(13,43,94,0.2)", linecolor="#0D2B5E"),
+    yaxis=dict(gridcolor="rgba(13,43,94,0.2)", linecolor="#0D2B5E"),
+    plot_bgcolor="rgba(0,0,0,0)",
+    paper_bgcolor="rgba(0,0,0,0)",
+)
+fig.update_traces(hovertemplate="<b>%{x|%b %d, %Y}</b><br>Total Supply: %{y:,.0f}<extra></extra>")
+st.plotly_chart(fig, use_container_width=True)
 
-    fig = px.line(
-        filtered_total,
+with st.expander("Show total supply data table"):
+    total_display = filtered_total.sort_values("week", ascending=False).copy()
+    total_display["week"] = total_display["week"].dt.strftime("%Y-%m-%d")
+    st.dataframe(total_display, width="stretch")
+
+st.divider()
+
+st.subheader("Product-Level Weekly Supply")
+
+if not selected_products:
+    st.warning("Please select at least one product from the sidebar.")
+else:
+    product_plot_df = filtered_product[
+        filtered_product["product_name"].isin(selected_products)
+    ].copy()
+
+    fig2 = px.line(
+        product_plot_df,
         x="week",
-        y="total_supply",
-        labels={"week": "Week", "total_supply": "Total Product Supplied"},
+        y="product_supplied",
+        color="product_name",
+        labels={
+            "week": "Week",
+            "product_supplied": "Product Supplied",
+            "product_name": "Product",
+        },
     )
-    fig.update_layout(hovermode="x unified")
-    fig.update_traces(
-        hovertemplate="<b>%{x|%b %d, %Y}</b><br>Total Supply: %{y:,.0f}<extra></extra>"
+    fig2.update_layout(
+        hovermode="x unified",
+        xaxis=dict(gridcolor="rgba(13,43,94,0.2)", linecolor="#0D2B5E"),
+        yaxis=dict(gridcolor="rgba(13,43,94,0.2)", linecolor="#0D2B5E"),
+        plot_bgcolor="rgba(0,0,0,0)",
+        paper_bgcolor="rgba(0,0,0,0)",
     )
-    st.plotly_chart(fig, use_container_width=True)
+    fig2.update_traces(
+        hovertemplate="<b>%{fullData.name}</b><br>%{x|%b %d, %Y}: %{y:,.0f}<extra></extra>"
+    )
+    st.plotly_chart(fig2, use_container_width=True)
 
-    with st.expander("Show total supply data table"):
-        total_display = filtered_total.sort_values("week", ascending=False).copy()
-        total_display["week"] = total_display["week"].dt.strftime("%Y-%m-%d")
-        st.dataframe(total_display, width="stretch")
-
-with right_col:
-    st.subheader("Product-Level Weekly Supply")
-
-    if not selected_products:
-        st.warning("Please select at least one product from the sidebar.")
-    else:
-        product_plot_df = filtered_product[
-            filtered_product["product_name"].isin(selected_products)
-        ].copy()
-
-        fig2 = px.line(
-            product_plot_df,
-            x="week",
-            y="product_supplied",
-            color="product_name",
-            labels={
-                "week": "Week",
-                "product_supplied": "Product Supplied",
-                "product_name": "Product",
-            },
-        )
-        fig2.update_layout(hovermode="x unified")
-        fig2.update_traces(
-            hovertemplate="<b>%{fullData.name}</b><br>%{x|%b %d, %Y}: %{y:,.0f}<extra></extra>"
-        )
-        st.plotly_chart(fig2, use_container_width=True)
-
-        with st.expander("Show product-level data table"):
-            product_display = product_plot_df.sort_values(
-                ["product_name", "week"], ascending=[True, False]
-            ).copy()
-            product_display["week"] = product_display["week"].dt.strftime("%Y-%m-%d")
-            st.dataframe(product_display, width="stretch")
+    with st.expander("Show product-level data table"):
+        product_display = product_plot_df.sort_values(
+            ["product_name", "week"], ascending=[True, False]
+        ).copy()
+        product_display["week"] = product_display["week"].dt.strftime("%Y-%m-%d")
+        st.dataframe(product_display, width="stretch")
 
 st.divider()
 

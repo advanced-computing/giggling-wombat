@@ -14,18 +14,51 @@ start_time = time.time()
 st.set_page_config(page_title="WTI Price", layout="wide")
 
 # =========================
-# Sidebar title
+# Sidebar title (above nav via CSS)
 # =========================
-st.sidebar.markdown(
+st.markdown(
     """
-    <h1 style="font-size: 1.5rem; line-height: 1.2; margin-bottom: 0.2rem;">
-        U.S. Petroleum & WTI Weekly Monitor
-    </h1>
+    <style>
+    [data-testid="stSidebar"] {
+        background-color: #0D2B5E !important;
+    }
+    [data-testid="stSidebar"] * {
+        color: white !important;
+    }
+    [data-testid="stSidebar"] input {
+        color: #1A1A1A !important;
+    }
+    [data-testid="stSidebar"] .stDateInput input {
+        color: #1A1A1A !important;
+        background-color: #E4EBF4 !important;
+    }
+    [data-testid="stSidebarNav"] a {
+        color: rgba(255,255,255,0.8) !important;
+    }
+    [data-testid="stSidebarNav"] a:hover {
+        color: white !important;
+        background-color: rgba(255,255,255,0.1) !important;
+    }
+    [data-testid="stSidebarNav"] {
+        padding-top: 3.5rem;
+    }
+    [data-testid="stSidebarNav"]::before {
+        content: "U.S. Petroleum & WTI Weekly Monitor";
+        display: block;
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        padding: 1rem 1.2rem 0.2rem 1.2rem;
+        font-size: 1.05rem;
+        font-weight: 600;
+        line-height: 1.3;
+        color: white !important;
+    }
+    </style>
     """,
     unsafe_allow_html=True,
 )
-st.sidebar.caption("Source: EIA")
-st.sidebar.divider()
 
 # =========================
 # Main page header
@@ -256,60 +289,66 @@ c3.metric(
 st.divider()
 
 # =========================
-# Two charts side by side
+# Stacked charts
 # =========================
-left_col, right_col = st.columns(TWO_COLUMN_LAYOUT)
+st.subheader("WTI Price Over Time (Weekly)")
 
-with left_col:
-    st.subheader("WTI Price Over Time (Weekly)")
+fig = go.Figure()
+fig.add_trace(
+    go.Scatter(
+        x=filtered_wti["week"],
+        y=filtered_wti["wti_price"],
+        name="WTI Price",
+        mode="lines",
+        hovertemplate="WTI Price: $%{y:.2f}<extra></extra>",
+    )
+)
+fig.add_trace(
+    go.Scatter(
+        x=filtered_wti["week"],
+        y=filtered_wti["wti_ma"],
+        name=f"{ma_window}-Week Moving Average",
+        mode="lines",
+        hovertemplate=f"{ma_window}-Week Avg: $%{{y:.2f}}<extra></extra>",
+    )
+)
+fig.update_layout(
+    xaxis_title="Week",
+    yaxis_title="WTI Price ($/barrel)",
+    hovermode="x unified",
+    hoverlabel=dict(namelength=-1),
+    xaxis=dict(gridcolor="rgba(13,43,94,0.2)", linecolor="#0D2B5E"),
+    yaxis=dict(gridcolor="rgba(13,43,94,0.2)", linecolor="#0D2B5E"),
+    plot_bgcolor="rgba(0,0,0,0)",
+    paper_bgcolor="rgba(0,0,0,0)",
+)
+st.plotly_chart(fig, use_container_width=True)
 
-    fig = go.Figure()
-    fig.add_trace(
-        go.Scatter(
-            x=filtered_wti["week"],
-            y=filtered_wti["wti_price"],
-            name="WTI Price",
-            mode="lines",
-            hovertemplate="WTI Price: $%{y:.2f}<extra></extra>",
-        )
-    )
-    fig.add_trace(
-        go.Scatter(
-            x=filtered_wti["week"],
-            y=filtered_wti["wti_ma"],
-            name=f"{ma_window}-Week Moving Average",
-            mode="lines",
-            hovertemplate=f"{ma_window}-Week Avg: $%{{y:.2f}}<extra></extra>",
-        )
-    )
-    fig.update_layout(
-        xaxis_title="Week",
-        yaxis_title="WTI Price ($/barrel)",
-        hovermode="x unified",
-        hoverlabel=dict(namelength=-1),
-    )
-    st.plotly_chart(fig, use_container_width=True)
+st.divider()
 
-with right_col:
-    st.subheader("Weekly Change in WTI Price")
+st.subheader("Weekly Change in WTI Price")
 
-    fig2 = go.Figure()
-    fig2.add_trace(
-        go.Scatter(
-            x=filtered_wti["week"],
-            y=filtered_wti["weekly_change"],
-            mode="lines",
-            name="Weekly Change",
-            hovertemplate="<b>%{x|%b %d, %Y}</b><br>Change: $%{y:.2f}<extra></extra>",
-        )
+fig2 = go.Figure()
+fig2.add_trace(
+    go.Scatter(
+        x=filtered_wti["week"],
+        y=filtered_wti["weekly_change"],
+        mode="lines",
+        name="Weekly Change",
+        hovertemplate="<b>%{x|%b %d, %Y}</b><br>Change: $%{y:.2f}<extra></extra>",
     )
-    fig2.add_hline(y=0, line_color="gray", line_width=1)
-    fig2.update_layout(
-        xaxis_title="Week",
-        yaxis_title="Weekly Change ($/barrel)",
-        hovermode="x unified",
-    )
-    st.plotly_chart(fig2, use_container_width=True)
+)
+fig2.add_hline(y=0, line_color="#0D2B5E", line_width=1.5)
+fig2.update_layout(
+    xaxis_title="Week",
+    yaxis_title="Weekly Change ($/barrel)",
+    hovermode="x unified",
+    xaxis=dict(gridcolor="rgba(13,43,94,0.2)", linecolor="#0D2B5E"),
+    yaxis=dict(gridcolor="rgba(13,43,94,0.2)", linecolor="#0D2B5E"),
+    plot_bgcolor="rgba(0,0,0,0)",
+    paper_bgcolor="rgba(0,0,0,0)",
+)
+st.plotly_chart(fig2, use_container_width=True)
 
 st.divider()
 st.subheader("Real-Time Interpretation")
