@@ -14,8 +14,6 @@ st.set_page_config(page_title="Event Context", layout="wide")
 # =========================
 # Sidebar title
 # =========================
-# Sidebar title (above nav via CSS)
-# =========================
 st.markdown(
     """
     <style>
@@ -135,10 +133,10 @@ def load_gdelt_data() -> pd.DataFrame:
             event_count,
             avg_goldstein,
             avg_tone,
-            verbal_cooperation_count,
-            material_cooperation_count,
-            verbal_conflict_count,
-            material_conflict_count
+            quadclass_1_count AS verbal_cooperation_count,
+            quadclass_2_count AS material_cooperation_count,
+            quadclass_3_count AS verbal_conflict_count,
+            quadclass_4_count AS material_conflict_count
         FROM `{GDELT_TABLE_ID}`
         ORDER BY week
     """
@@ -223,7 +221,10 @@ if weekly_supply.empty:
     st.stop()
 
 if weekly_gdelt.empty:
-    st.error("No GDELT event data found in BigQuery.")
+    st.error(
+        "No GDELT event data found in BigQuery. Please rebuild the "
+        "`weekly_gdelt_events` table with data first."
+    )
     st.stop()
 
 weekly_wti = weekly_wti.sort_values("week").copy()
@@ -465,7 +466,6 @@ else:
 
     display_table = anomaly_table.copy()
     display_table["week"] = display_table["week"].dt.strftime("%Y-%m-%d")
-
     st.dataframe(display_table, width="stretch")
 
 with st.expander("Show merged weekly data"):
