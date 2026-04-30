@@ -123,16 +123,6 @@ except Exception as e:
 # =========================
 # Sidebar filters
 # =========================
-st.sidebar.markdown(
-    """
-    <h1 style="font-size: 1.5rem; line-height: 1.2; margin-bottom: 0.2rem;">
-        U.S. Petroleum & WTI Weekly Monitor
-    </h1>
-    """,
-    unsafe_allow_html=True,
-)
-st.sidebar.caption("Source: GDELT + EIA")
-st.sidebar.divider()
 st.sidebar.header("Filters")
 st.sidebar.caption("Affects correlation statistics and key findings below.")
 
