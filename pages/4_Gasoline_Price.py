@@ -17,25 +17,77 @@ st.set_page_config(page_title="Gasoline Price", layout="wide")
 st.markdown(
     """
     <style>
-    [data-testid="stSidebar"] { background-color: #0D2B5E !important; }
-    [data-testid="stSidebar"] * { color: white !important; }
+    [data-testid="stSidebar"] {
+        background-color: #0D2B5E !important;
+    }
+
+    [data-testid="stSidebar"] > div {
+        background-color: #0D2B5E !important;
+    }
+
+    [data-testid="stSidebar"] * {
+        color: white !important;
+    }
+
+    [data-testid="stSidebarNav"] {
+        padding-top: 3.8rem;
+        background-color: #0D2B5E !important;
+    }
+
+    [data-testid="stSidebarNav"]::before {
+        content: "U.S. Petroleum & WTI Weekly Monitor";
+        display: block;
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        padding: 1rem 1.2rem 0.3rem 1.2rem;
+        font-size: 1.05rem;
+        font-weight: 700;
+        line-height: 1.3;
+        color: white !important;
+        background-color: #0D2B5E !important;
+    }
+
+    [data-testid="stSidebarNav"] a {
+        color: rgba(255,255,255,0.85) !important;
+        background-color: transparent !important;
+    }
+
+    [data-testid="stSidebarNav"] a:hover {
+        color: white !important;
+        background-color: rgba(255,255,255,0.12) !important;
+        border-radius: 0.4rem;
+    }
+
+    [data-testid="stSidebarNav"] a[aria-current="page"] {
+        color: white !important;
+        background-color: rgba(255,255,255,0.16) !important;
+        border-radius: 0.4rem;
+        font-weight: 700;
+    }
+
     [data-testid="stSidebar"] .stDateInput input {
         color: #1A1A1A !important;
         background-color: #E4EBF4 !important;
     }
-    [data-testid="stSidebarNav"] a { color: rgba(255,255,255,0.8) !important; }
-    [data-testid="stSidebarNav"] a:hover {
-        color: white !important;
-        background-color: rgba(255,255,255,0.1) !important;
+
+    [data-testid="stSidebar"] input {
+        color: #1A1A1A !important;
+        background-color: #E4EBF4 !important;
     }
-    [data-testid="stSidebarNav"] { padding-top: 3.5rem; }
-    [data-testid="stSidebarNav"]::before {
-        content: "U.S. Petroleum & WTI Weekly Monitor";
-        display: block; position: absolute;
-        top: 0; left: 0; right: 0;
-        padding: 1rem 1.2rem 0.2rem 1.2rem;
-        font-size: 1.05rem; font-weight: 600; line-height: 1.3;
-        color: white !important;
+
+    [data-testid="stSidebar"] textarea {
+        color: #1A1A1A !important;
+        background-color: #E4EBF4 !important;
+    }
+
+    [data-testid="stSidebar"] div[data-baseweb="select"] * {
+        color: #1A1A1A !important;
+    }
+
+    [data-testid="stSidebar"] div[data-baseweb="select"] > div {
+        background-color: #E4EBF4 !important;
     }
     </style>
     """,
@@ -52,20 +104,6 @@ def interpret(text: str):
         unsafe_allow_html=True,
     )
 
-
-# =========================
-# Sidebar
-# =========================
-st.sidebar.markdown(
-    """
-    <h1 style="font-size: 1.5rem; line-height: 1.2; margin-bottom: 0.2rem;">
-        U.S. Petroleum & WTI Weekly Monitor
-    </h1>
-    """,
-    unsafe_allow_html=True,
-)
-st.sidebar.caption("Source: EIA")
-st.sidebar.divider()
 
 # =========================
 # Page header
