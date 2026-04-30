@@ -13,6 +13,37 @@ start_time = time.time()
 
 st.set_page_config(page_title="Price Transmission Analysis", layout="wide")
 
+# =========================
+# Sidebar styling
+# =========================
+st.markdown(
+    """
+    <style>
+    [data-testid="stSidebar"] { background-color: #0D2B5E !important; }
+    [data-testid="stSidebar"] * { color: white !important; }
+    [data-testid="stSidebar"] .stDateInput input {
+        color: #1A1A1A !important;
+        background-color: #E4EBF4 !important;
+    }
+    [data-testid="stSidebarNav"] a { color: rgba(255,255,255,0.8) !important; }
+    [data-testid="stSidebarNav"] a:hover {
+        color: white !important;
+        background-color: rgba(255,255,255,0.1) !important;
+    }
+    [data-testid="stSidebarNav"] { padding-top: 3.5rem; }
+    [data-testid="stSidebarNav"]::before {
+        content: "U.S. Petroleum & WTI Weekly Monitor";
+        display: block; position: absolute;
+        top: 0; left: 0; right: 0;
+        padding: 1rem 1.2rem 0.2rem 1.2rem;
+        font-size: 1.05rem; font-weight: 600; line-height: 1.3;
+        color: white !important;
+    }
+    </style>
+    """,
+    unsafe_allow_html=True,
+)
+
 P_SIGNIFICANCE = 0.05
 MAX_LAG = 12
 
