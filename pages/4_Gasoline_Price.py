@@ -148,7 +148,7 @@ def load_wti() -> pd.DataFrame:
     client = get_bq_client()
     query = f"SELECT week, wti_price FROM `{WTI_TABLE}` ORDER BY week"
     df = client.query(query).to_dataframe(create_bqstorage_client=False)
-    df["week"] = pd.to_datetime(df["week"])
+    df["week"] = pd.to_datetime(df["week"]).dt.to_period("W").dt.start_time
     df["wti_price"] = pd.to_numeric(df["wti_price"], errors="coerce")
     return df.dropna().sort_values("week").reset_index(drop=True)
 
@@ -192,7 +192,7 @@ if filtered.empty:
     st.warning("No data available for selected date range.")
     st.stop()
 
-merged = filtered.merge(wti, on="week", how="left")
+merged = filtered.merge(wti, on="week", how="inner")
 
 filtered["gas_smooth"] = filtered["gasoline_price"].rolling(4, center=True).mean()
 filtered["weekly_change"] = filtered["gasoline_price"].diff()
