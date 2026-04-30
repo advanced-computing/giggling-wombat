@@ -3,7 +3,7 @@ import pandas_gbq
 import requests
 
 # ── Config ────────────────────────────────────────────────────────────────────
-API_KEY    = "qIgxlen05S7xFsozHUuJ4HXned44qT8RF3OewtSv"
+API_KEY = "qIgxlen05S7xFsozHUuJ4HXned44qT8RF3OewtSv"
 PROJECT_ID = "sipa-adv-c-giggling-wombat"
 DESTINATION = f"{PROJECT_ID}.giggling_wombat.weekly_gasoline"
 
@@ -26,12 +26,12 @@ def fetch_gasoline() -> pd.DataFrame:
     r.raise_for_status()
 
     data = r.json().get("response", {}).get("data", [])
-    df   = pd.DataFrame(data)
+    df = pd.DataFrame(data)
 
     if df.empty:
         raise ValueError("No gasoline data returned from EIA.")
 
-    df["week"]           = pd.to_datetime(df["period"], errors="coerce")
+    df["week"] = pd.to_datetime(df["period"], errors="coerce")
     df["gasoline_price"] = pd.to_numeric(df["value"], errors="coerce")
 
     df = df.dropna(subset=["week", "gasoline_price"])

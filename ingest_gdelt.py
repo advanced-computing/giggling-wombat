@@ -1,7 +1,7 @@
 import pandas_gbq
 
 # ── Config ────────────────────────────────────────────────────────────────────
-PROJECT_ID  = "sipa-adv-c-giggling-wombat"
+PROJECT_ID = "sipa-adv-c-giggling-wombat"
 DESTINATION = f"{PROJECT_ID}.giggling_wombat.gdelt_weekly"
 
 # GDELT EventRootCode descriptions for reference:

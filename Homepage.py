@@ -45,9 +45,9 @@ st.markdown(
 # =========================
 # Config
 # =========================
-PROJECT_ID     = "sipa-adv-c-giggling-wombat"
-GDELT_TABLE    = f"{PROJECT_ID}.giggling_wombat.gdelt_weekly"
-WTI_TABLE      = f"{PROJECT_ID}.petroleum_supply.weekly_wti"
+PROJECT_ID = "sipa-adv-c-giggling-wombat"
+GDELT_TABLE = f"{PROJECT_ID}.giggling_wombat.gdelt_weekly"
+WTI_TABLE = f"{PROJECT_ID}.petroleum_supply.weekly_wti"
 GASOLINE_TABLE = f"{PROJECT_ID}.giggling_wombat.weekly_gasoline"
 
 
@@ -82,24 +82,30 @@ def load_all_data():
     for df in [wti, gas, gdelt]:
         df["week"] = pd.to_datetime(df["week"]).dt.to_period("W").dt.start_time
 
-    wti["wti_price"]       = pd.to_numeric(wti["wti_price"],       errors="coerce")
-    gas["gasoline_price"]  = pd.to_numeric(gas["gasoline_price"],  errors="coerce")
+    wti["wti_price"] = pd.to_numeric(wti["wti_price"], errors="coerce")
+    gas["gasoline_price"] = pd.to_numeric(gas["gasoline_price"], errors="coerce")
     gdelt["avg_goldstein"] = pd.to_numeric(gdelt["avg_goldstein"], errors="coerce")
 
     wti = (
         wti.groupby("week")
         .agg(wti_price=("wti_price", "mean"))
-        .reset_index().dropna().sort_values("week")
+        .reset_index()
+        .dropna()
+        .sort_values("week")
     )
     gas = (
         gas.groupby("week")
         .agg(gasoline_price=("gasoline_price", "mean"))
-        .reset_index().dropna().sort_values("week")
+        .reset_index()
+        .dropna()
+        .sort_values("week")
     )
     gdelt = (
         gdelt.groupby("week")
         .agg(avg_goldstein=("avg_goldstein", "mean"))
-        .reset_index().dropna().sort_values("week")
+        .reset_index()
+        .dropna()
+        .sort_values("week")
     )
 
     return wti, gas, gdelt
@@ -132,15 +138,13 @@ st.sidebar.caption("Affects correlation statistics and key findings below.")
 
 # Use merged min/max for date range
 merged_all = gdelt.merge(wti, on="week", how="inner").merge(gas, on="week", how="inner").dropna()
-min_week   = merged_all["week"].min().date()
-max_week   = merged_all["week"].max().date()
+min_week = merged_all["week"].min().date()
+max_week = merged_all["week"].max().date()
 
 start_week = st.sidebar.date_input(
     "Start week", value=min_week, min_value=min_week, max_value=max_week
 )
-end_week = st.sidebar.date_input(
-    "End week", value=max_week, min_value=min_week, max_value=max_week
-)
+end_week = st.sidebar.date_input("End week", value=max_week, min_value=min_week, max_value=max_week)
 
 if start_week > end_week:
     st.sidebar.error("Start week must be before end week.")
@@ -150,8 +154,8 @@ if start_week > end_week:
 # Filter merged data
 # =========================
 merged = merged_all[
-    (merged_all["week"] >= pd.to_datetime(start_week)) &
-    (merged_all["week"] <= pd.to_datetime(end_week))
+    (merged_all["week"] >= pd.to_datetime(start_week))
+    & (merged_all["week"] <= pd.to_datetime(end_week))
 ].copy()
 
 if merged.empty:
@@ -159,39 +163,37 @@ if merged.empty:
     st.stop()
 
 # Current prices (always latest, unaffected by filter)
-latest_wti      = wti.iloc[-1]["wti_price"]
+latest_wti = wti.iloc[-1]["wti_price"]
 latest_wti_date = wti.iloc[-1]["week"].strftime("%b %d, %Y")
-wti_change      = latest_wti - (wti.iloc[-2]["wti_price"] if len(wti) > 1 else latest_wti)
+wti_change = latest_wti - (wti.iloc[-2]["wti_price"] if len(wti) > 1 else latest_wti)
 
-latest_gas      = gas.iloc[-1]["gasoline_price"]
+latest_gas = gas.iloc[-1]["gasoline_price"]
 latest_gas_date = gas.iloc[-1]["week"].strftime("%b %d, %Y")
-gas_change      = latest_gas - (gas.iloc[-2]["gasoline_price"] if len(gas) > 1 else latest_gas)
+gas_change = latest_gas - (gas.iloc[-2]["gasoline_price"] if len(gas) > 1 else latest_gas)
 
-latest_gold      = gdelt.iloc[-1]["avg_goldstein"]
+latest_gold = gdelt.iloc[-1]["avg_goldstein"]
 latest_gold_date = gdelt.iloc[-1]["week"].strftime("%b %d, %Y")
-gold_change = latest_gold - (
-    gdelt.iloc[-2]["avg_goldstein"] if len(gdelt) > 1 else latest_gold
-)
+gold_change = latest_gold - (gdelt.iloc[-2]["avg_goldstein"] if len(gdelt) > 1 else latest_gold)
 
 # Stats computed on filtered period
 r_conflict_wti, _ = stats.pearsonr(merged["avg_goldstein"], merged["wti_price"])
-r_wti_gas, _      = stats.pearsonr(merged["wti_price"],     merged["gasoline_price"])
+r_wti_gas, _ = stats.pearsonr(merged["wti_price"], merged["gasoline_price"])
 slope_wti_gas, _, _, _, _ = stats.linregress(merged["wti_price"], merged["gasoline_price"])
 cents = slope_wti_gas * 100
 
 avg_goldstein_period = merged["avg_goldstein"].mean()
 
-lags     = list(range(1, 13))
+lags = list(range(1, 13))
 corr_lag = []
 for lag in lags:
     shifted = merged["avg_goldstein"].shift(lag)
-    valid   = merged[["gasoline_price"]].join(shifted.rename("s")).dropna()
-    r, _    = stats.pearsonr(valid["s"], valid["gasoline_price"]) if len(valid) > 1 else (0, 0)
+    valid = merged[["gasoline_price"]].join(shifted.rename("s")).dropna()
+    r, _ = stats.pearsonr(valid["s"], valid["gasoline_price"]) if len(valid) > 1 else (0, 0)
     corr_lag.append(abs(r))
 best_lag = lags[np.argmax(corr_lag)]
 
 start_str = pd.to_datetime(start_week).strftime("%b %d, %Y")
-end_str   = pd.to_datetime(end_week).strftime("%b %d, %Y")
+end_str = pd.to_datetime(end_week).strftime("%b %d, %Y")
 
 # =========================
 # Hero section
@@ -209,8 +211,7 @@ st.markdown(
     unsafe_allow_html=True,
 )
 st.caption(
-    "Team Members: Irina, Indra · "
-    "Source: GDELT, U.S. Energy Information Administration (EIA)"
+    "Team Members: Irina, Indra · Source: GDELT, U.S. Energy Information Administration (EIA)"
 )
 st.markdown("<br>", unsafe_allow_html=True)
 
@@ -277,17 +278,20 @@ with col_info:
 
 c1, c2, c3 = st.columns(3)
 c1.metric(
-    "WTI Crude Oil Price", f"${latest_wti:.2f}/bbl",
+    "WTI Crude Oil Price",
+    f"${latest_wti:.2f}/bbl",
     delta=f"${wti_change:+.2f} from prev. week",
     help=f"Latest price as of {latest_wti_date}",
 )
 c2.metric(
-    "U.S. Gasoline Price", f"${latest_gas:.3f}/gal",
+    "U.S. Gasoline Price",
+    f"${latest_gas:.3f}/gal",
     delta=f"${gas_change:+.3f} from prev. week",
     help=f"Latest price as of {latest_gas_date}",
 )
 c3.metric(
-    "Conflict Intensity (Goldstein)", f"{latest_gold:.2f}",
+    "Conflict Intensity (Goldstein)",
+    f"{latest_gold:.2f}",
     delta=f"{gold_change:+.2f} from prev. week",
     delta_color="inverse",
     help=f"Latest avg Goldstein score as of {latest_gold_date}. Lower = more conflict.",
@@ -297,15 +301,18 @@ st.markdown("<br>", unsafe_allow_html=True)
 
 c4, c5, c6 = st.columns(3)
 c4.metric(
-    "Conflict → WTI Correlation", f"r = {r_conflict_wti:.3f}",
+    "Conflict → WTI Correlation",
+    f"r = {r_conflict_wti:.3f}",
     help=f"Pearson r for selected period ({start_str} to {end_str})",
 )
 c5.metric(
-    "WTI → Gasoline Correlation", f"r = {r_wti_gas:.3f}",
+    "WTI → Gasoline Correlation",
+    f"r = {r_wti_gas:.3f}",
     help=f"Pearson r for selected period ({start_str} to {end_str})",
 )
 c6.metric(
-    "Conflict → Pump Price Lag", f"{best_lag} weeks",
+    "Conflict → Pump Price Lag",
+    f"{best_lag} weeks",
     help=f"Strongest lag for selected period ({start_str} to {end_str})",
 )
 
@@ -346,7 +353,8 @@ with col1:
             Covers 10 major oil-producing countries from 2012 to present.
             </span>
         </div>
-        """, unsafe_allow_html=True,
+        """,
+        unsafe_allow_html=True,
     )
 with col2:
     st.markdown(
@@ -359,7 +367,8 @@ with col2:
             updated weekly since 1986.
             </span>
         </div>
-        """, unsafe_allow_html=True,
+        """,
+        unsafe_allow_html=True,
     )
 with col3:
     st.markdown(
@@ -371,7 +380,8 @@ with col3:
             What consumers actually pay at the pump, in dollars per gallon.
             </span>
         </div>
-        """, unsafe_allow_html=True,
+        """,
+        unsafe_allow_html=True,
     )
 
 st.divider()

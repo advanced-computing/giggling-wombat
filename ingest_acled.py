@@ -3,23 +3,28 @@ import pandas_gbq
 import requests
 
 # ── Config ────────────────────────────────────────────────────────────────────
-ACLED_EMAIL    = "ims2170@columbia.edu"
+ACLED_EMAIL = "ims2170@columbia.edu"
 ACLED_PASSWORD = "Ms1994ms1994"
 
-PROJECT_ID  = "sipa-adv-c-giggling-wombat"
+PROJECT_ID = "sipa-adv-c-giggling-wombat"
 DESTINATION = f"{PROJECT_ID}.giggling_wombat.acled_weekly"
 
-HTTP_OK    = 200
-PAGE_SIZE  = 5000
+HTTP_OK = 200
+PAGE_SIZE = 5000
 DATE_RANGE = "2012-01-01|2026-12-31"
-ACLED_FIELDS = (
-    "event_date|country|disorder_type|event_type"
-    "|actor1|civilian_targeting|fatalities"
-)
+ACLED_FIELDS = "event_date|country|disorder_type|event_type|actor1|civilian_targeting|fatalities"
 
 OIL_COUNTRIES = [
-    "Russia", "Iran", "Iraq", "Saudi Arabia", "Libya",
-    "Venezuela", "United Arab Emirates", "Kuwait", "Nigeria", "Algeria",
+    "Russia",
+    "Iran",
+    "Iraq",
+    "Saudi Arabia",
+    "Libya",
+    "Venezuela",
+    "United Arab Emirates",
+    "Kuwait",
+    "Nigeria",
+    "Algeria",
 ]
 
 
@@ -27,15 +32,13 @@ OIL_COUNTRIES = [
 def get_access_token(username, password):
     headers = {"Content-Type": "application/x-www-form-urlencoded"}
     data = {
-        "username":   username,
-        "password":   password,
+        "username": username,
+        "password": password,
         "grant_type": "password",
-        "client_id":  "acled",
-        "scope":      "authenticated",
+        "client_id": "acled",
+        "scope": "authenticated",
     }
-    r = requests.post(
-        "https://acleddata.com/oauth/token", headers=headers, data=data
-    )
+    r = requests.post("https://acleddata.com/oauth/token", headers=headers, data=data)
     if r.status_code == HTTP_OK:
         print("Token acquired!")
         return r.json()["access_token"]
@@ -53,18 +56,18 @@ def fetch_acled(token):
 
         while True:
             params = {
-                "country":          country,
-                "event_date":       DATE_RANGE,
+                "country": country,
+                "event_date": DATE_RANGE,
                 "event_date_where": "BETWEEN",
-                "fields":           ACLED_FIELDS,
-                "limit":            PAGE_SIZE,
-                "page":             page,
+                "fields": ACLED_FIELDS,
+                "limit": PAGE_SIZE,
+                "page": page,
             }
             r = requests.get(
                 "https://acleddata.com/api/acled/read?_format=json",
                 headers={
                     "Authorization": f"Bearer {token}",
-                    "Content-Type":  "application/json",
+                    "Content-Type": "application/json",
                 },
                 params=params,
             )
@@ -91,21 +94,25 @@ def fetch_acled(token):
 def aggregate_weekly(df):
     df["event_date"] = pd.to_datetime(df["event_date"])
     df["fatalities"] = pd.to_numeric(df["fatalities"], errors="coerce").fillna(0)
-    df["week"]       = df["event_date"].dt.to_period("W").apply(
-        lambda r: r.start_time
-    )
+    df["week"] = df["event_date"].dt.to_period("W").apply(lambda r: r.start_time)
 
-    weekly = df.groupby([
-        "week",
-        "country",
-        "disorder_type",
-        "event_type",
-        "actor1",
-        "civilian_targeting",
-    ]).agg(
-        event_count=("event_date", "count"),
-        total_fatalities=("fatalities", "sum"),
-    ).reset_index()
+    weekly = (
+        df.groupby(
+            [
+                "week",
+                "country",
+                "disorder_type",
+                "event_type",
+                "actor1",
+                "civilian_targeting",
+            ]
+        )
+        .agg(
+            event_count=("event_date", "count"),
+            total_fatalities=("fatalities", "sum"),
+        )
+        .reset_index()
+    )
 
     return weekly
 

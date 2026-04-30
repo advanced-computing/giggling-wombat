@@ -87,25 +87,20 @@ def load_data() -> pd.DataFrame:
     """).to_dataframe(create_bqstorage_client=False)
 
     for frame in [gdelt, wti, gasoline]:
-        frame["week"] = (
-            pd.to_datetime(frame["week"]).dt.to_period("W").dt.start_time
+        frame["week"] = pd.to_datetime(frame["week"]).dt.to_period("W").dt.start_time
+
+    gdelt = (
+        gdelt.groupby("week")
+        .agg(
+            avg_goldstein=("avg_goldstein", "mean"),
+            total_mentions=("total_mentions", "sum"),
         )
-
-    gdelt = gdelt.groupby("week").agg(
-        avg_goldstein=("avg_goldstein", "mean"),
-        total_mentions=("total_mentions", "sum"),
-    ).reset_index()
-    wti = wti.groupby("week").agg(
-        wti_price=("wti_price", "mean")
-    ).reset_index()
-    gasoline = gasoline.groupby("week").agg(
-        gasoline_price=("gasoline_price", "mean")
-    ).reset_index()
-
-    df = (
-        gdelt.merge(wti, on="week", how="inner")
-        .merge(gasoline, on="week", how="inner")
+        .reset_index()
     )
+    wti = wti.groupby("week").agg(wti_price=("wti_price", "mean")).reset_index()
+    gasoline = gasoline.groupby("week").agg(gasoline_price=("gasoline_price", "mean")).reset_index()
+
+    df = gdelt.merge(wti, on="week", how="inner").merge(gasoline, on="week", how="inner")
     df["avg_goldstein"] = pd.to_numeric(df["avg_goldstein"], errors="coerce")
     df["wti_price"] = pd.to_numeric(df["wti_price"], errors="coerce")
     df["gasoline_price"] = pd.to_numeric(df["gasoline_price"], errors="coerce")
@@ -129,13 +124,10 @@ max_week = df["week"].max().date()
 start_week = st.sidebar.date_input(
     "Start week", value=min_week, min_value=min_week, max_value=max_week
 )
-end_week = st.sidebar.date_input(
-    "End week", value=max_week, min_value=min_week, max_value=max_week
-)
+end_week = st.sidebar.date_input("End week", value=max_week, min_value=min_week, max_value=max_week)
 
 filtered = df[
-    (df["week"] >= pd.to_datetime(start_week))
-    & (df["week"] <= pd.to_datetime(end_week))
+    (df["week"] >= pd.to_datetime(start_week)) & (df["week"] <= pd.to_datetime(end_week))
 ].copy()
 
 if filtered.empty:
@@ -161,9 +153,7 @@ st.divider()
 # =========================
 st.header("① How Much Does Conflict Affect WTI Price?")
 
-slope1, intercept1, r1, p1, _ = stats.linregress(
-    filtered["avg_goldstein"], filtered["wti_price"]
-)
+slope1, intercept1, r1, p1, _ = stats.linregress(filtered["avg_goldstein"], filtered["wti_price"])
 
 col1, col2 = st.columns([2, 1])
 
@@ -192,11 +182,7 @@ with col2:
     st.metric("P-value", f"{p1:.4f}")
     st.metric("Slope", f"{slope1:.2f} USD/unit")
     st.markdown("---")
-    sig1 = (
-        "Statistically significant"
-        if p1 < P_SIGNIFICANCE
-        else "Not significant"
-    )
+    sig1 = "Statistically significant" if p1 < P_SIGNIFICANCE else "Not significant"
     st.markdown(f"**{sig1}** (p < 0.05)")
 
     st.markdown("**Technical:**")
@@ -207,11 +193,7 @@ with col2:
 
     st.markdown("**In plain English:**")
     direction1 = "rises" if slope1 < 0 else "falls"
-    reliable = (
-        "statistically reliable"
-        if p1 < P_SIGNIFICANCE
-        else "not statistically reliable"
-    )
+    reliable = "statistically reliable" if p1 < P_SIGNIFICANCE else "not statistically reliable"
     st.info(
         f"When conflict intensifies in oil-producing countries, "
         f"WTI price tends to **{direction1}** by about "
@@ -229,7 +211,7 @@ interpret(
     f"Over <b>{len(filtered):,} weeks</b> from <b>{start_str}</b> to "
     f"<b>{end_str}</b>, the Pearson correlation between conflict intensity "
     f"and WTI price was <b>r = {r1:.3f}</b> (R² = {r1**2:.3f}), meaning "
-    f"conflict explains <b>{r1**2*100:.1f}%</b> of WTI price variation. "
+    f"conflict explains <b>{r1**2 * 100:.1f}%</b> of WTI price variation. "
     f"{sig_text1}"
 )
 
@@ -240,9 +222,7 @@ st.divider()
 # =========================
 st.header("② How Much Does WTI Affect Gasoline Price?")
 
-slope2, intercept2, r2, p2, _ = stats.linregress(
-    filtered["wti_price"], filtered["gasoline_price"]
-)
+slope2, intercept2, r2, p2, _ = stats.linregress(filtered["wti_price"], filtered["gasoline_price"])
 
 col3, col4 = st.columns([2, 1])
 
@@ -271,17 +251,12 @@ with col4:
     st.metric("P-value", f"{p2:.4f}")
     st.metric("Slope", f"${slope2:.4f}/gal per $/bbl")
     st.markdown("---")
-    sig2 = (
-        "Statistically significant"
-        if p2 < P_SIGNIFICANCE
-        else "Not significant"
-    )
+    sig2 = "Statistically significant" if p2 < P_SIGNIFICANCE else "Not significant"
     st.markdown(f"**{sig2}** (p < 0.05)")
 
     st.markdown("**Technical:**")
     st.markdown(
-        f"A $1 increase in WTI is associated with a "
-        f"**${slope2:.4f}/gal** change in gasoline."
+        f"A $1 increase in WTI is associated with a **${slope2:.4f}/gal** change in gasoline."
     )
 
     st.markdown("**In plain English:**")
@@ -290,7 +265,7 @@ with col4:
         f"Every **$1 increase in crude oil price** leads to about "
         f"**{cents:.1f} cents more per gallon** at the pump. "
         f"With R² = {r2**2:.3f}, crude oil explains "
-        f"**{r2**2*100:.0f}%** of gasoline price variation — "
+        f"**{r2**2 * 100:.0f}%** of gasoline price variation — "
         f"making it the single biggest driver of what consumers pay."
     )
 
@@ -300,10 +275,10 @@ sig_text2 = (
     else "This relationship is not statistically significant (p >= 0.05)."
 )
 interpret(
-    f"WTI crude oil price explains <b>{r2**2*100:.1f}%</b> of the variation "
+    f"WTI crude oil price explains <b>{r2**2 * 100:.1f}%</b> of the variation "
     f"in U.S. gasoline prices (R² = {r2**2:.3f}, r = {r2:.3f}). "
     f"For every <b>$1 increase</b> in WTI, gasoline prices rise by "
-    f"approximately <b>{slope2*100:.1f} cents per gallon</b>. "
+    f"approximately <b>{slope2 * 100:.1f} cents per gallon</b>. "
     f"{sig_text2}"
 )
 
@@ -331,21 +306,36 @@ for lag in lags:
         store.append(round(r, 4))
 
 fig3 = go.Figure()
-fig3.add_trace(go.Scatter(
-    x=lags, y=corr_conflict_wti, name="Conflict -> WTI",
-    mode="lines+markers", line=dict(color="#1B4F8A", width=2),
-    marker=dict(size=8),
-))
-fig3.add_trace(go.Scatter(
-    x=lags, y=corr_conflict_gas, name="Conflict -> Gasoline",
-    mode="lines+markers", line=dict(color="crimson", width=2),
-    marker=dict(size=8),
-))
-fig3.add_trace(go.Scatter(
-    x=lags, y=corr_wti_gas, name="WTI -> Gasoline",
-    mode="lines+markers", line=dict(color="#DC641E", width=2),
-    marker=dict(size=8),
-))
+fig3.add_trace(
+    go.Scatter(
+        x=lags,
+        y=corr_conflict_wti,
+        name="Conflict -> WTI",
+        mode="lines+markers",
+        line=dict(color="#1B4F8A", width=2),
+        marker=dict(size=8),
+    )
+)
+fig3.add_trace(
+    go.Scatter(
+        x=lags,
+        y=corr_conflict_gas,
+        name="Conflict -> Gasoline",
+        mode="lines+markers",
+        line=dict(color="crimson", width=2),
+        marker=dict(size=8),
+    )
+)
+fig3.add_trace(
+    go.Scatter(
+        x=lags,
+        y=corr_wti_gas,
+        name="WTI -> Gasoline",
+        mode="lines+markers",
+        line=dict(color="#DC641E", width=2),
+        marker=dict(size=8),
+    )
+)
 fig3.add_hline(y=0, line_color="gray", line_dash="dash", line_width=1)
 fig3.update_layout(
     xaxis=dict(title="Lag (weeks)", tickvals=lags),
@@ -404,21 +394,33 @@ for col in ["avg_goldstein", "wti_price", "gasoline_price"]:
 norm["avg_goldstein"] = norm["avg_goldstein"] * -1
 
 fig4 = go.Figure()
-fig4.add_trace(go.Scatter(
-    x=norm["week"], y=norm["avg_goldstein"],
-    name="Conflict Intensity (inverted)", mode="lines",
-    line=dict(color="crimson", width=1.5, dash="dot"),
-))
-fig4.add_trace(go.Scatter(
-    x=norm["week"], y=norm["wti_price"],
-    name="WTI Price", mode="lines",
-    line=dict(color="#1B4F8A", width=2),
-))
-fig4.add_trace(go.Scatter(
-    x=norm["week"], y=norm["gasoline_price"],
-    name="Gasoline Price", mode="lines",
-    line=dict(color="#DC641E", width=2),
-))
+fig4.add_trace(
+    go.Scatter(
+        x=norm["week"],
+        y=norm["avg_goldstein"],
+        name="Conflict Intensity (inverted)",
+        mode="lines",
+        line=dict(color="crimson", width=1.5, dash="dot"),
+    )
+)
+fig4.add_trace(
+    go.Scatter(
+        x=norm["week"],
+        y=norm["wti_price"],
+        name="WTI Price",
+        mode="lines",
+        line=dict(color="#1B4F8A", width=2),
+    )
+)
+fig4.add_trace(
+    go.Scatter(
+        x=norm["week"],
+        y=norm["gasoline_price"],
+        name="Gasoline Price",
+        mode="lines",
+        line=dict(color="#DC641E", width=2),
+    )
+)
 fig4.update_layout(
     yaxis_title="Normalized value (z-score)",
     xaxis_title="Week",
