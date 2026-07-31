@@ -24,8 +24,6 @@ Weekly WTI Crude Oil Spot Price (RWTC) https://www.eia.gov/opendata/browser/petr
 - Do petroleum supply and crude oil prices show similar patterns over time?
 - Are there noticeable disruptions during major events such as the COVID-19 period?
 
-### Link to notebook: https://github.com/advanced-computing/giggling-wombat/blob/main/project.ipynb
-
 ### Target Visualization Description
 
 - Weekly time-series line chart of U.S. petroleum product supplied
